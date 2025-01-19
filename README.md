@@ -1,3 +1,7 @@
+[!WARNING]
+
+This Package is PURELY experimental and untested. This warning will be removed once this testing has been completed
+
 # ImageCloud
 
 This tool is used to construct image clouds from a CSV of weights and image source filepaths.
