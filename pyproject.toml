@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=75.8.0", "Cython>=3.0.11"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imagecloud"
+authors = [
+    { name = "Larry Page", email = "lawrence.page@live.com" },
+]
+description = "Creation of a collage of images scaled based on relative weights."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.13"
+license = { text = "MIT License" }
+dependencies = [ 
+    "pillow>=11.1.0",
+    "numpy>=2.2.1",
+    "matplotlib>=3.10.0",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "put_url_here"
+
+[project.scripts]
+imagecloud_cli = "imagecloud.__main__:main"
+
+[tool.setuptools]
+packages = ["imagecloud"]
+ext-modules = [
+  {name = "query_integral_image", sources = ["imagecloud/query_integral_image.pyx"]}
+]
+
+
+[tool.setuptools_scm]
+write_to = "imagecloud/_version.py"

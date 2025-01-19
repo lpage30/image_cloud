@@ -1,0 +1,2 @@
+include imagecloud/_version.py
+exclude imagecloud/*.c
