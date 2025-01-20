@@ -1,6 +1,6 @@
 from PIL import Image
 import matplotlib.pyplot as plt
-from .datafilepath import DataFilepath
+from datafilepath import DataFilepath
 
 class LoadedImage(object):
     def __init__(self) -> None:

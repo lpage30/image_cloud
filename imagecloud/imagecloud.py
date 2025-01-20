@@ -3,7 +3,7 @@ from PIL import ImageFilter
 import warnings
 from random import Random
 import numpy as np
-from .integraloccupancymap import IntegralOccupancyMap
+from integraloccupancymap import IntegralOccupancyMap
 
  # implementation was extrapolated from wordcloud and adapted for images
  

@@ -1,5 +1,5 @@
 import numpy as np
-from .query_integral_image import query_integral_image # type: ignore
+from query_integral_image import query_integral_image # type: ignore
 
 # copied from https://github.com/amueller/word_cloud/blob/main/wordcloud/wordcloud.py
 

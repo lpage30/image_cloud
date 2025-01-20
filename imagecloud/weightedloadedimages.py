@@ -1,6 +1,6 @@
-from .loadedimage import LoadedImage
+from loadedimage import LoadedImage
 from PIL import Image
-from .datafilepath import DataFilepath
+from datafilepath import DataFilepath
 import csv
 import sys
 import statistics

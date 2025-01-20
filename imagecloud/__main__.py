@@ -1,8 +1,8 @@
 import argparse
 import os.path
-from .weightedloadedimages import WeightedLoadedImages, CSV_FILE_HELP
-from .loadedimage import LoadedImage, INTERPOLATION_TYPES, INTERPOLATION_HELP
-from .imagecloud import ImageCloud, MASK_HELP, CLOUD_SIZE_HELP, IMAGE_STEP_HELP, MAX_IMAGE_SIZE_HELP, MIN_IMAGE_SIZE_HELP, BACKGROUND_COLOR_HELP, CONTOUR_WIDTH_HELP, CONTOUR_COLOR_HELP
+from weightedloadedimages import WeightedLoadedImages, CSV_FILE_HELP
+from loadedimage import LoadedImage, INTERPOLATION_TYPES, INTERPOLATION_HELP
+from imagecloud import ImageCloud, MASK_HELP, CLOUD_SIZE_HELP, IMAGE_STEP_HELP, MAX_IMAGE_SIZE_HELP, MIN_IMAGE_SIZE_HELP, BACKGROUND_COLOR_HELP, CONTOUR_WIDTH_HELP, CONTOUR_COLOR_HELP
 
 def existing_filepath(parser: argparse.ArgumentParser, value: str) -> str:
     if not os.path.exists(value):
