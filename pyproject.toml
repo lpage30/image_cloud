@@ -19,7 +19,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-Homepage = "put_url_here"
+Homepage = "https://github.com/lpage30/image_cloud"
 
 [project.scripts]
 imagecloud_cli = "imagecloud.__main__:main"
