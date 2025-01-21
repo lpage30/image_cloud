@@ -3,28 +3,58 @@ from PIL import Image, ImageFilter
 import warnings
 from random import Random
 import numpy as np
-from .query_integral_image import query_integral_image
+import query_integral_image as integral
 
+DEFAULT_CLOUD_SIZE = '400,200'
+DEFAULT_STEP_SIZE = '1,1'
+DEFAULT_MAX_IMAGE_SIZE = None
+DEFAULT_MIN_IMAGE_SIZE = '4,4'
+DEFAULT_BACKGROUND_COLOR = 'white'
+DEFAULT_CONTOUR_WIDTH = '0'
+DEFAULT_CONTOUR_COLOR = 'black'
+DEFAULT_REPEAT = False
+DEFAULT_RELATIVE_SCALING = None
+DEFAULT_PREFER_HORIZONTAL = '0.9'
+DEFAULT_MARGIN = '2'
+DEFAULT_MODE = 'RGB'
+DEFAULT_MAX_IMAGES = '200'
+DEFAULT_SCALE = '1.0'
+
+def parse_to_int(s:str) -> int:
+    if s == None or not(s.isdigit()):
+        raise ValueError('Invalid value {0} must be a number'.fomat(s))
+
+def parse_to_float(s:str) -> float:
+    if s == None or not(s.replace('.','',1).isdigit()):
+            raise ValueError('Invalid value {0} must be a number'.fomat(s))
+    return float(s)
+    
+def parse_to_tuple(s: str) -> tuple[int, int]:
+    width, height = s.split(',')
+    return (parse_to_int(width), parse_to_int(height))
+
+    
 MASK_HELP = '''Image file
-        If not None, gives a binary mask on where to draw words. If mask is not
-        None, width and height will be ignored and the shape of mask will be
-        used instead. All white (#FF or #FFFFFF) entries will be considerd
-        "masked out" while other entries will be free to draw on. [This
-        changed in the most recent version!]
+If not None, gives a binary mask on where to draw words.
+If mask is not None, width and height will be ignored
+and the shape of mask will be used instead. 
+All white (#FF or #FFFFFF) entries will be considered "masked out"
+while other entries will be free to draw on.\
 '''
 
 CLOUD_SIZE_HELP = 'width and height of canvas'
 
-IMAGE_STEP_HELP = '''Step size for the image. image_step[0] | image_step[1] > 1 might speed up computation but
-        give a worse fit.
+IMAGE_STEP_HELP = '''Step size for the image. 
+image_step[0] | image_step[1] > 1 might speed up computation
+but give a worse fit.
 '''
 
-MAX_IMAGE_SIZE_HELP = '''Maximum image size for the largest image. If None, height of the image is
-        used.
+MAX_IMAGE_SIZE_HELP = '''Maximum image size for the largest image.
+If None, height of the image is used.
 '''
 
-MIN_IMAGE_SIZE_HELP = '''Smallest image size to use. Will stop when there is no more room in this
-        size.
+MIN_IMAGE_SIZE_HELP = '''Smallest image size to use.
+Will stop when there is no more room in this size.
 '''
 
 BACKGROUND_COLOR_HELP = 'Background color for the image cloud image.'
@@ -35,19 +65,16 @@ CONTOUR_COLOR_HELP = 'Mask contour color.'
 
 REPEAT_HELP = 'Whether to repeat images until max_images or min_image_size is reached.'
 
-RELATIVE_SCALING_HELP = '''Importance of relative image frequencies for font-size.  With
-        relative_scaling=0, only image-ranks are considered.  With
-        relative_scaling=1, a image that is twice as frequent will have twice
-        the size.  If you want to consider the image frequencies and not only
-        their rank, relative_scaling around .5 often looks good.
-        default: it will be set to 0.5 unless repeat is true, in which
-        case it will be set to 0.
+RELATIVE_SCALING_HELP = '''Importance of relative image frequencies for image-size.
+With relative_scaling = 0, only image-ranks are considered.
+With relative_scaling = 1, a image that is twice as frequent will have twice the size.
+If you want to consider the image frequencies and not only their rank,
+relative_scaling around .5 often looks good.
+default: it will be set to 0.5 unless repeat is true, in which case it will be set to 0.
     '''
 
 PREFER_HORIZONTAL_HELP = '''The ratio of times to try horizontal fitting as opposed to vertical.
-        If prefer_horizontal < 1, the algorithm will try rotating the word
-        if it doesn't fit. (There is currently no built-in way to get only
-        vertical words.)
+If prefer_horizontal < 1, the algorithm will try rotating the image if it doesn't fit. 
 '''
 
 MARGIN_HELP = 'The gap to allow between images.'
@@ -74,14 +101,8 @@ MODE_TYPES = [
     'I;16B', # (16-bit big endian unsigned integer pixels)
     'I;16N'
 ]
-MODE_HELP = '''Transparent background will be generated when mode is "RGBA" and
-        background_color is None.: [{0}]
-'''.format(','.join(MODE_TYPES))
+MODE_HELP = 'Transparent background will be generated when mode is "RGBA" and background_color is None.'
 
-
-MODE_HELP = '''Transparent background will be generated when mode is "RGBA" and
-        background_color is None.'
-'''
 # implementation was extrapolated from wordcloud and adapted for images
  
 class ImageCloud(object):
@@ -96,47 +117,43 @@ class ImageCloud(object):
         "masked out" while other entries will be free to draw on. [This
         changed in the most recent version!]
 
-    size: (width, height)
-        width : int (default=400)
-            Width of the canvas.
+    size: (width, height) see DEFAULT_CLOUD_SIZE
+        width and height of canvas
 
-        height : int (default=200)
-            Height of the canvas.
-
-    background_color : color value (default="white")
+    background_color : color value (default=DEFAULT_BACKGROUND_COLOR)
         Background color for the image cloud image.
     
-    max_images : number (default=200)
+    max_images : number (default=DEFAULT_MAX_IMAGES)
         The maximum number of images.
 a
     max_image_size : (width, height) or None (default=None)
         Maximum image size for the largest image. If None, height of the image is
         used.
 
-    min_image_size : (width, height) (default=(4, 4))
+    min_image_size : (width, height) (default=DEFAULT_MIN_IMAGE_SIZE)
         Smallest image size to use. Will stop when there is no more room in this
         size.
 
-    image_step : (width, height) (default=(1, 1))
+    image_step : (width, height) (default=DEFAULT_STEP_SIZE)
         Step size for the image. image_step[0] | image_step[1] > 1 might speed up computation but
         give a worse fit.
         
-    scale : float (default=1)
+    scale : float (default=DEFAULT_SCALE)
         Scaling between computation and drawing. For large word-cloud images,
         using scale instead of larger canvas size is significantly faster, but
         might lead to a coarser fit for the words.
 
-    contour_width: float (default=0)
+    contour_width: float (default=DEFAULT_CONTOUR_WIDTH)
         If mask is not None and contour_width > 0, draw the mask contour.
     
-    contour_color: color value (default="black")
+    contour_color: color value (default=DEFAULT_CONTOUR_COLOR)
         Mask contour color.
     
-    repeat : bool, default=False
+    repeat : bool, default=DEFAULT_REPEAT
         Whether to repeat images until max_images or min_image_size
         is reached.
 
-    relative_scaling : float (default='auto')
+    relative_scaling : float (default=None)
         Importance of relative word frequencies for font-size.  With
         relative_scaling=0, only word-ranks are considered.  With
         relative_scaling=1, a word that is twice as frequent will have twice
@@ -145,16 +162,16 @@ a
         If 'auto' it will be set to 0.5 unless repeat is true, in which
         case it will be set to 0.
     
-    prefer_horizontal : float (default=0.90)
+    prefer_horizontal : float (default=DEFAULT_PREFER_HORIZONTAL)
         The ratio of times to try horizontal fitting as opposed to vertical.
         If prefer_horizontal < 1, the algorithm will try rotating the word
         if it doesn't fit. (There is currently no built-in way to get only
         vertical words.)
         
-    margin: int (default=2)
+    margin: int (default=DEFAULT_MARGIN)
         The gap to allow between images
     
-    mode : string (default="RGB")
+    mode : string (default=DEFAULT_MODE)
         Transparent background will be generated when mode is "RGBA" and
         background_color is None.
     """
@@ -176,16 +193,16 @@ a
                  mode: str | None = None
     ) -> None:
         self._mask = np.array(mask) if mask != None else None
-        self._size = size if size != None else (800, 400)
-        self._background_color = background_color if background_color != None else 'white'
-        self._max_images = max_images if max_images != None else 200
+        self._size = size if size != None else parse_to_tuple(DEFAULT_CLOUD_SIZE)
+        self._background_color = background_color if background_color != None else DEFAULT_BACKGROUND_COLOR
+        self._max_images = max_images if max_images != None else parse_to_int(DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
-        self._min_image_size = min_image_size if min_image_size != None else (4,4)
-        self._image_step = image_step if image_step != None else (1,1)
-        self._scale = scale if scale != None else 1.0
-        self._contour_width = contour_width if contour_width != None else 0
-        self._contour_color = contour_color if contour_color != None else 'black'
-        self._repeat = repeat if repeat != None else False
+        self._min_image_size = min_image_size if min_image_size != None else parse_to_tuple(DEFAULT_MIN_IMAGE_SIZE)
+        self._image_step = image_step if image_step != None else parse_to_tuple(DEFAULT_STEP_SIZE)
+        self._scale = scale if scale != None else parse_to_float(DEFAULT_SCALE)
+        self._contour_width = contour_width if contour_width != None else parse_to_int(DEFAULT_CONTOUR_WIDTH)
+        self._contour_color = contour_color if contour_color != None else DEFAULT_CONTOUR_COLOR
+        self._repeat = repeat if repeat != None else DEFAULT_REPEAT
 
         if relative_scaling == None:
             if self._repeat:
@@ -197,13 +214,13 @@ a
             raise ValueError("relative_scaling needs to be "
                              "between 0 and 1, got %f." % relative_scaling)
         self._relative_scaling = relative_scaling
-        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else 0.9
-        self._margin = margin if margin != None else 2
-        self._mode = mode if mode != None else 'RGB'
+        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else parse_to_float(DEFAULT_PREFER_HORIZONTAL)
+        self._margin = margin if margin != None else parse_to_int(DEFAULT_MARGIN)
+        self._mode = mode if mode != None else DEFAULT_MODE
         self._random_state = None
 
 
-    def generate(self, 
+    def generate(self,
                  weighted_images: list[tuple[float, Image.Image]],
                  max_image_size: tuple[int,int] | None = None,
                  reportProgress: Callable[[str], None] | None = None
@@ -216,7 +233,6 @@ a
                              "got %d." % len(weighted_images))
         weighted_images = weighted_images[:self._max_images]
 
-        # largest entry will be 1
         max_weight = float(weighted_images[0][0])
 
         weighted_images = [(weight / max_weight, image)
@@ -254,9 +270,9 @@ a
                 # we only have one word. We make it big!
                 image_size = self._size
             else:
-                self.generate_from_frequencies(dict(weighted_images[:2]),
-                                               max_image_size=self._size)
-                # find font sizes
+                self.generate(weighted_images[:2],
+                             max_image_size=self._size)
+                # find image sizes
                 sizes = [x[1] for x in self.layout_]
                 try:
                     image_size = (
@@ -270,15 +286,11 @@ a
                         image_size = sizes[0]
                     except IndexError:
                         raise ValueError(
-                            "Couldn't find space to draw. Either the Canvas size"
+                            "Couldn't find space to paste. Either the Canvas size"
                             " is too small or too much of the image is masked "
                             "out.")
         else:
             image_size = max_image_size
-
-        # we set self.words_ here because we called generate_from_frequencies
-        # above... hurray for good design?
-        self.images_ = dict(weighted_images)
 
         if self._repeat and len(weighted_images) < self._max_images:
             # pad frequencies with repeating images.
@@ -352,7 +364,7 @@ a
 
             x, y = np.array(result) + self._margin // 2
             # actually paste image
-            img_grey.paste(new_image, (y, x))
+            img_grey.paste(new_image, (x, y))
             positions.append((x, y))
             orientations.append(orientation)
             image_sizes.append(image_size)
@@ -487,7 +499,7 @@ class IntegralOccupancyMap(object):
 
     def sample_position(self, size_x, size_y, random_state):
         
-        return query_integral_image(self.integral, size_x, size_y,
+        return integral.query_integral_image(self.integral, size_x, size_y,
                                     random_state)
 
     def update(self, img_array, pos_x, pos_y):

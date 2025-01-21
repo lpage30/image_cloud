@@ -22,7 +22,7 @@ dynamic = ["version"]
 Homepage = "https://github.com/lpage30/image_cloud"
 
 [project.scripts]
-imagecloud_cli = "imagecloud.__main__:main"
+imagecloud_cli = "imagecloud.imagecloud_cli:main"
 
 [tool.setuptools]
 packages = ["imagecloud"]
