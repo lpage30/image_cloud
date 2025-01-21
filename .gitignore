@@ -27,3 +27,4 @@ dist/
 
 imagecloud/__pycache__/
 imagecloud/_version.py
+*.png
