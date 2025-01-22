@@ -21,7 +21,7 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 
 ### imagecloud_cli
 ```
-usage: ImageCloud_cli [-h] -i <csv_filepath>
+usage: imagecloud_cli [-h] -i <csv_filepath>
                       -o <generated_image_cloud_filepath>
                       [--output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
                       [--normalize_type min|max|avg|median|fitsize|none]

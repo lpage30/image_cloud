@@ -3,7 +3,8 @@ requires = ["setuptools>=75.8.0", "Cython>=3.0.11"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "imagecloud"
+name = "image_cloud"
+version = "2025.0.0a1"
 authors = [
     { name = "Larry Page", email = "lawrence.page@live.com" },
 ]
@@ -16,7 +17,6 @@ dependencies = [
     "numpy>=2.2.1",
     "matplotlib>=3.10.0",
 ]
-dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/lpage30/image_cloud"

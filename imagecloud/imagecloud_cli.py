@@ -2,8 +2,12 @@ from typing import TypedDict
 import argparse
 import os.path
 import sys
-import images as imgs
-import imagecloud as ic
+try:
+    from . import images as imgs
+    from . import imagecloud as ic
+except Exception as e:
+    import images as imgs
+    import imagecloud as ic
 
 DEFAULT_SHOW = True
 
@@ -115,7 +119,7 @@ def main(args: ImageCloudArguments | None = None) -> None:
 def parse_arguments(arguments: list[str]) -> ImageCloudArguments:
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter,
-        prog='ImageCloud_cli',
+        prog='imagecloud_cli',
         description='''
         Generate an \'ImageCloud\' from a csv file indicating image filepath and weight for image.
         '''

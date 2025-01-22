@@ -3,7 +3,10 @@ from PIL import Image, ImageFilter
 import warnings
 from random import Random
 import numpy as np
-import query_integral_image as integral
+try:
+    from . import query_integral_image as integral
+except Exception as e:
+    import query_integral_image as integral
 
 DEFAULT_CLOUD_SIZE = '400,200'
 DEFAULT_STEP_SIZE = '1,1'

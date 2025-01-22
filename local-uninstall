@@ -1,4 +1,4 @@
 #!/bin/bash
 script_path=$( cd -- "$(dirname "${BASH_SOURCE[0]}x")" >/dev/null 2>&1 ; pwd -P )
+python3 -m pip uninstall image_cloud --break-system-packages
 source ${script_path}/clean
-python3 -m build ${script_path}
