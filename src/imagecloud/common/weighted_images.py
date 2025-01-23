@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from PIL import Image
 import csv
+from imagecloud.common.file_tools import to_unused_filepath
 
 WEIGHT_HEADER = 'weight'
 IMAGE_FILEPATH_HEADER = 'image_filepath'
@@ -41,9 +42,8 @@ def save_weights_images(
         csv_writer = csv.DictWriter(file, fieldnames=[IMAGE_FILEPATH_HEADER, WEIGHT_HEADER])
         csv_writer.writeheader()
         for i in range(total_images):
-            image_filepath = '{0}.{1}'.format(
-                filepaths[i] if i < len(filepaths) else to_unused_filepath('{0}.{1}'.format(image_filepath_prefix, str(i)), image_format),
-                image_format
+            image_filepath = to_unused_filepath(
+                filepaths[i] if i < len(filepaths) else '{0}.{1}.{2}'.format(image_filepath_prefix, str(i), image_format)
             )
             if reportProgress:
                 reportProgress('writing image[{0}/{1}] as {2}'.format(i+1, total_images, image_filepath))

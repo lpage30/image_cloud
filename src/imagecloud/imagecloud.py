@@ -3,6 +3,7 @@ from PIL import Image, ImageFilter
 import warnings
 from random import Random
 import numpy as np
+import imagecloud.common.string_parsers as parsers
 import imagecloud.imagecloud_defaults as helper
 import imagecloud.common.query_integral_image as integral
 
@@ -97,14 +98,14 @@ a
                  mode: str | None = None
     ) -> None:
         self._mask = np.array(mask) if mask != None else None
-        self._size = size if size != None else helper.parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
+        self._size = size if size != None else parsers.parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
         self._background_color = background_color if background_color != None else helper.DEFAULT_BACKGROUND_COLOR
-        self._max_images = max_images if max_images != None else helper.parse_to_int(helper.DEFAULT_MAX_IMAGES)
+        self._max_images = max_images if max_images != None else parsers.parse_to_int(helper.DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
         self._min_image_size = min_image_size if min_image_size != None else helper.parse_to_tuple(helper.DEFAULT_MIN_IMAGE_SIZE)
-        self._image_step = image_step if image_step != None else helper.parse_to_tuple(helper.DEFAULT_STEP_SIZE)
-        self._scale = scale if scale != None else helper.parse_to_float(helper.DEFAULT_SCALE)
-        self._contour_width = contour_width if contour_width != None else helper.parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
+        self._image_step = image_step if image_step != None else parsers.parse_to_tuple(helper.DEFAULT_STEP_SIZE)
+        self._scale = scale if scale != None else parsers.parse_to_float(helper.DEFAULT_SCALE)
+        self._contour_width = contour_width if contour_width != None else parsers.parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
         self._contour_color = contour_color if contour_color != None else helper.DEFAULT_CONTOUR_COLOR
         self._repeat = repeat if repeat != None else helper.DEFAULT_REPEAT
 
@@ -118,8 +119,8 @@ a
             raise ValueError("relative_scaling needs to be "
                              "between 0 and 1, got %f." % relative_scaling)
         self._relative_scaling = relative_scaling
-        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else helper.parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
-        self._margin = margin if margin != None else helper.parse_to_int(helper.DEFAULT_MARGIN)
+        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else parsers.parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
+        self._margin = margin if margin != None else parsers.parse_to_int(helper.DEFAULT_MARGIN)
         self._mode = mode if mode != None else helper.DEFAULT_MODE
         self._random_state = None
 

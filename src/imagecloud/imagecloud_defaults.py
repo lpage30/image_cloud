@@ -12,20 +12,6 @@ DEFAULT_MARGIN = '2'
 DEFAULT_MODE = 'RGB'
 DEFAULT_MAX_IMAGES = '200'
 DEFAULT_SCALE = '1.0'
-
-def parse_to_int(s:str) -> int:
-    if s == None or not(s.isdigit()):
-        raise ValueError('Invalid value {0} must be a number'.fomat(s))
-
-def parse_to_float(s:str) -> float:
-    if s == None or not(s.replace('.','',1).isdigit()):
-            raise ValueError('Invalid value {0} must be a number'.fomat(s))
-    return float(s)
-    
-def parse_to_tuple(s: str) -> tuple[int, int]:
-    width, height = s.split(',')
-    return (parse_to_int(width), parse_to_int(height))
-
     
 MASK_HELP = '''Image file
 If not None, gives a binary mask on where to draw words.

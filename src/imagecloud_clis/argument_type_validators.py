@@ -1,24 +1,15 @@
 import argparse
-import os.path
-
-def parse_to_int(s:str) -> int:
-    if s == None or not(s.isdigit()):
-        raise ValueError('Invalid value {0} must be a number'.fomat(s))
-
-def parse_to_float(s:str) -> float:
-    if s == None or not(s.replace('.','',1).isdigit()):
-            raise ValueError('Invalid value {0} must be a number'.fomat(s))
-    return float(s)
-    
-def parse_to_tuple(s: str) -> tuple[int, int]:
-    width, height = s.split(',')
-    return (parse_to_int(width), parse_to_int(height))
-
+from imagecloud.common.string_parsers import (
+    parse_to_existing_filepath,
+    parse_to_int,
+    parse_to_float,
+    parse_to_tuple,
+)
 def existing_filepath(parser: argparse.ArgumentParser, value: str) -> str:
-    if not os.path.exists(value):
-        parser.error('The file {0} does not exist!'.format(value))
-    else:
-        return value
+    try:
+        return parse_to_existing_filepath(value)
+    except Exception as e:
+        parser.error(str(e))
     
 def is_one_of_array(parser: argparse.ArgumentParser, value: str, valid_values: list[str]) -> str:
     if value in valid_values:
@@ -28,7 +19,7 @@ def is_one_of_array(parser: argparse.ArgumentParser, value: str, valid_values: l
 
 def is_integer(parser: argparse.ArgumentParser, value: str):
     try:
-        return parse_to_int(str)
+        return parse_to_int(value)
     except Exception as e:
         parser.error(str(e))
 

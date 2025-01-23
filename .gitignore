@@ -11,11 +11,11 @@ dist/
 *.egg-info/
 
 ### ides ###
-.vscode
+.vscode/*
+!.vscode/launch.json
 .idea
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
 
-imagecloud/__pycache__/
-imagecloud/_version.py
+*__pycache__
 *.png
