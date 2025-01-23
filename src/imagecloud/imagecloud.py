@@ -3,108 +3,9 @@ from PIL import Image, ImageFilter
 import warnings
 from random import Random
 import numpy as np
-try:
-    from . import query_integral_image as integral
-except Exception as e:
-    import query_integral_image as integral
+import imagecloud.imagecloud_defaults as helper
+import imagecloud.common.query_integral_image as integral
 
-DEFAULT_CLOUD_SIZE = '400,200'
-DEFAULT_STEP_SIZE = '1,1'
-DEFAULT_MAX_IMAGE_SIZE = None
-DEFAULT_MIN_IMAGE_SIZE = '4,4'
-DEFAULT_BACKGROUND_COLOR = 'white'
-DEFAULT_CONTOUR_WIDTH = '0'
-DEFAULT_CONTOUR_COLOR = 'black'
-DEFAULT_REPEAT = False
-DEFAULT_RELATIVE_SCALING = None
-DEFAULT_PREFER_HORIZONTAL = '0.9'
-DEFAULT_MARGIN = '2'
-DEFAULT_MODE = 'RGB'
-DEFAULT_MAX_IMAGES = '200'
-DEFAULT_SCALE = '1.0'
-
-def parse_to_int(s:str) -> int:
-    if s == None or not(s.isdigit()):
-        raise ValueError('Invalid value {0} must be a number'.fomat(s))
-
-def parse_to_float(s:str) -> float:
-    if s == None or not(s.replace('.','',1).isdigit()):
-            raise ValueError('Invalid value {0} must be a number'.fomat(s))
-    return float(s)
-    
-def parse_to_tuple(s: str) -> tuple[int, int]:
-    width, height = s.split(',')
-    return (parse_to_int(width), parse_to_int(height))
-
-    
-MASK_HELP = '''Image file
-If not None, gives a binary mask on where to draw words.
-If mask is not None, width and height will be ignored
-and the shape of mask will be used instead. 
-All white (#FF or #FFFFFF) entries will be considered "masked out"
-while other entries will be free to draw on.\
-'''
-
-CLOUD_SIZE_HELP = 'width and height of canvas'
-
-IMAGE_STEP_HELP = '''Step size for the image. 
-image_step[0] | image_step[1] > 1 might speed up computation
-but give a worse fit.
-'''
-
-MAX_IMAGE_SIZE_HELP = '''Maximum image size for the largest image.
-If None, height of the image is used.
-'''
-
-MIN_IMAGE_SIZE_HELP = '''Smallest image size to use.
-Will stop when there is no more room in this size.
-'''
-
-BACKGROUND_COLOR_HELP = 'Background color for the image cloud image.'
-
-CONTOUR_WIDTH_HELP = 'If mask is not None and contour_width > 0, draw the mask contour.'
-
-CONTOUR_COLOR_HELP = 'Mask contour color.'
-
-REPEAT_HELP = 'Whether to repeat images until max_images or min_image_size is reached.'
-
-RELATIVE_SCALING_HELP = '''Importance of relative image frequencies for image-size.
-With relative_scaling = 0, only image-ranks are considered.
-With relative_scaling = 1, a image that is twice as frequent will have twice the size.
-If you want to consider the image frequencies and not only their rank,
-relative_scaling around .5 often looks good.
-default: it will be set to 0.5 unless repeat is true, in which case it will be set to 0.
-    '''
-
-PREFER_HORIZONTAL_HELP = '''The ratio of times to try horizontal fitting as opposed to vertical.
-If prefer_horizontal < 1, the algorithm will try rotating the image if it doesn't fit. 
-'''
-
-MARGIN_HELP = 'The gap to allow between images.'
-
-MODE_TYPES = [
-    '1', # (1-bit pixels, black and white, stored with one pixel per byte)
-    'L', # (8-bit pixels, grayscale)
-    'P', # (8-bit pixels, mapped to any other mode using a color palette)
-    'RGB', # (3x8-bit pixels, true color)
-    'RGBA', # (4x8-bit pixels, true color with transparency mask)
-    'CMYK', # (4x8-bit pixels, color separation)
-    'YCbCr', # (3x8-bit pixels, color video format)
-    'LAB', # (3x8-bit pixels, the L*a*b color space)
-    'HSV', # (3x8-bit pixels, Hue, Saturation, Value color space)
-    'I', # (32-bit signed integer pixels)
-    'F', # (32-bit floating point pixels)
-    'LA', # (L with alpha)
-    'PA', # (P with alpha)
-    'RGBX', # (true color with padding)
-    'RGBa', # (true color with premultiplied alpha)
-    'La', # (L with premultiplied alpha)
-    'I;16', # (16-bit unsigned integer pixels)
-    'I;16L', # (16-bit little endian unsigned integer pixels)
-    'I;16B', # (16-bit big endian unsigned integer pixels)
-    'I;16N'
-]
-MODE_HELP = 'Transparent background will be generated when mode is "RGBA" and background_color is None.'
 
 # implementation was extrapolated from wordcloud and adapted for images
  
@@ -120,39 +21,39 @@ class ImageCloud(object):
         "masked out" while other entries will be free to draw on. [This
         changed in the most recent version!]
 
-    size: (width, height) see DEFAULT_CLOUD_SIZE
+    size: (width, height) see helper.DEFAULT_CLOUD_SIZE
         width and height of canvas
 
-    background_color : color value (default=DEFAULT_BACKGROUND_COLOR)
+    background_color : color value (default=helper.DEFAULT_BACKGROUND_COLOR)
         Background color for the image cloud image.
     
-    max_images : number (default=DEFAULT_MAX_IMAGES)
+    max_images : number (default=helper.DEFAULT_MAX_IMAGES)
         The maximum number of images.
 a
     max_image_size : (width, height) or None (default=None)
         Maximum image size for the largest image. If None, height of the image is
         used.
 
-    min_image_size : (width, height) (default=DEFAULT_MIN_IMAGE_SIZE)
+    min_image_size : (width, height) (default=helper.DEFAULT_MIN_IMAGE_SIZE)
         Smallest image size to use. Will stop when there is no more room in this
         size.
 
-    image_step : (width, height) (default=DEFAULT_STEP_SIZE)
+    image_step : (width, height) (default=helper.DEFAULT_STEP_SIZE)
         Step size for the image. image_step[0] | image_step[1] > 1 might speed up computation but
         give a worse fit.
         
-    scale : float (default=DEFAULT_SCALE)
+    scale : float (default=helper.DEFAULT_SCALE)
         Scaling between computation and drawing. For large word-cloud images,
         using scale instead of larger canvas size is significantly faster, but
         might lead to a coarser fit for the words.
 
-    contour_width: float (default=DEFAULT_CONTOUR_WIDTH)
+    contour_width: float (default=helper.DEFAULT_CONTOUR_WIDTH)
         If mask is not None and contour_width > 0, draw the mask contour.
     
-    contour_color: color value (default=DEFAULT_CONTOUR_COLOR)
+    contour_color: color value (default=helper.DEFAULT_CONTOUR_COLOR)
         Mask contour color.
     
-    repeat : bool, default=DEFAULT_REPEAT
+    repeat : bool, default=helper.DEFAULT_REPEAT
         Whether to repeat images until max_images or min_image_size
         is reached.
 
@@ -165,16 +66,16 @@ a
         If 'auto' it will be set to 0.5 unless repeat is true, in which
         case it will be set to 0.
     
-    prefer_horizontal : float (default=DEFAULT_PREFER_HORIZONTAL)
+    prefer_horizontal : float (default=helper.DEFAULT_PREFER_HORIZONTAL)
         The ratio of times to try horizontal fitting as opposed to vertical.
         If prefer_horizontal < 1, the algorithm will try rotating the word
         if it doesn't fit. (There is currently no built-in way to get only
         vertical words.)
         
-    margin: int (default=DEFAULT_MARGIN)
+    margin: int (default=helper.DEFAULT_MARGIN)
         The gap to allow between images
     
-    mode : string (default=DEFAULT_MODE)
+    mode : string (default=helper.DEFAULT_MODE)
         Transparent background will be generated when mode is "RGBA" and
         background_color is None.
     """
@@ -196,16 +97,16 @@ a
                  mode: str | None = None
     ) -> None:
         self._mask = np.array(mask) if mask != None else None
-        self._size = size if size != None else parse_to_tuple(DEFAULT_CLOUD_SIZE)
-        self._background_color = background_color if background_color != None else DEFAULT_BACKGROUND_COLOR
-        self._max_images = max_images if max_images != None else parse_to_int(DEFAULT_MAX_IMAGES)
+        self._size = size if size != None else helper.parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
+        self._background_color = background_color if background_color != None else helper.DEFAULT_BACKGROUND_COLOR
+        self._max_images = max_images if max_images != None else helper.parse_to_int(helper.DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
-        self._min_image_size = min_image_size if min_image_size != None else parse_to_tuple(DEFAULT_MIN_IMAGE_SIZE)
-        self._image_step = image_step if image_step != None else parse_to_tuple(DEFAULT_STEP_SIZE)
-        self._scale = scale if scale != None else parse_to_float(DEFAULT_SCALE)
-        self._contour_width = contour_width if contour_width != None else parse_to_int(DEFAULT_CONTOUR_WIDTH)
-        self._contour_color = contour_color if contour_color != None else DEFAULT_CONTOUR_COLOR
-        self._repeat = repeat if repeat != None else DEFAULT_REPEAT
+        self._min_image_size = min_image_size if min_image_size != None else helper.parse_to_tuple(helper.DEFAULT_MIN_IMAGE_SIZE)
+        self._image_step = image_step if image_step != None else helper.parse_to_tuple(helper.DEFAULT_STEP_SIZE)
+        self._scale = scale if scale != None else helper.parse_to_float(helper.DEFAULT_SCALE)
+        self._contour_width = contour_width if contour_width != None else helper.parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
+        self._contour_color = contour_color if contour_color != None else helper.DEFAULT_CONTOUR_COLOR
+        self._repeat = repeat if repeat != None else helper.DEFAULT_REPEAT
 
         if relative_scaling == None:
             if self._repeat:
@@ -217,9 +118,9 @@ a
             raise ValueError("relative_scaling needs to be "
                              "between 0 and 1, got %f." % relative_scaling)
         self._relative_scaling = relative_scaling
-        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else parse_to_float(DEFAULT_PREFER_HORIZONTAL)
-        self._margin = margin if margin != None else parse_to_int(DEFAULT_MARGIN)
-        self._mode = mode if mode != None else DEFAULT_MODE
+        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else helper.parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
+        self._margin = margin if margin != None else helper.parse_to_int(helper.DEFAULT_MARGIN)
+        self._mode = mode if mode != None else helper.DEFAULT_MODE
         self._random_state = None
 
 

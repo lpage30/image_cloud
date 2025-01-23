@@ -22,14 +22,12 @@ dependencies = [
 Homepage = "https://github.com/lpage30/image_cloud"
 
 [project.scripts]
-imagecloud_cli = "imagecloud.imagecloud_cli:main"
+imagecloud_cli = "imagecloud_clis.imagecloud_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools]
-packages = ["imagecloud"]
 ext-modules = [
-  {name = "query_integral_image", sources = ["imagecloud/query_integral_image.pyx"]}
+  {name = "query_integral_image", sources = ["src/imagecloud/common/query_integral_image.pyx"]}
 ]
-
-
-[tool.setuptools_scm]
-write_to = "imagecloud/_version.py"
