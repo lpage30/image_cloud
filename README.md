@@ -21,23 +21,17 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 
 ### imagecloud_cli
 ```
-usage: imagecloud_cli [-h] -i <csv_filepath>
-                      -o <generated_image_cloud_filepath>
+usage: imagecloud_cli [-h] -i <csv_filepath> -o <generated_image_cloud_filepath>
                       [--output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
-                      [--normalize_type min|max|avg|median|fitsize|none]
-                      [--cloud_size "<width>,<height>"]
-                      [--min_image_size "<width>,<height>"]
-                      [--max_image_size "<width>,<height>"]
-                      [--background_color <color-name>]
-                      [--contour_width <float>] [--contour_color <color-name>]
-                      [-m <image_file_path>] [--step_size "<width>,<height>"]
-                      [--relative_scaling <float>]
-                      [--prefer_horizontal <float>] [--margin <number>]
-                      [--mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N]
-                      [--repeat] [--no-repeat] [--show] [--no-show]
+                      [--normalize_type min|max|avg|median|fitsize|none] [--cloud_size "<width>,<height>"]
+                      [--min_image_size "<width>,<height>"] [--max_image_size "<width>,<height>"] [--background_color <color-name>]
+                      [--contour_width <float>] [--contour_color <color-name>] [-m <image_file_path>] [--step_size "<width>,<height>"]
+                      [--relative_scaling <float>] [--prefer_horizontal <float>] [--margin <number>]
+                      [--mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [--repeat] [--no-repeat]
+                      [--show] [--no-show]
 
-        Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
-        
+            Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
+            
 
 options:
   -h, --help            show this help message and exit
@@ -66,7 +60,7 @@ options:
                         Optional, (default None) Maximum image size for the largest image.
                         If None, height of the image is used.
   --background_color <color-name>
-                        Optional, (default white) Background color for the image cloud image.
+                        Optional, (default None) Background color for the image cloud image.
   --contour_width <float>
                         Optional, (default 0) If mask is not None and contour_width > 0, draw the mask contour.
   --contour_color <color-name>
@@ -93,9 +87,9 @@ options:
   --prefer_horizontal <float>
                         Optional, (default 0.9) The ratio of times to try horizontal fitting as opposed to vertical.
                         If prefer_horizontal < 1, the algorithm will try rotating the image if it doesn't fit. 
-  --margin <number>     Optional, (default 2) The gap to allow between images.
+  --margin <number>     Optional, (default 1) The gap to allow between images.
   --mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N
-                        Optional, (default RGB) Transparent background will be generated when mode is "RGBA" and background_color is None.
+                        Optional, (default RGBA) Transparent background will be generated when mode is "RGBA" and background_color is None.
   --repeat              Optional, Whether to repeat images until max_images or min_image_size is reached.
   --no-repeat           Optional, (default) Whether to repeat images until max_images or min_image_size is reached.
   --show                Optional, (default) show resulting image cloud when finished.
