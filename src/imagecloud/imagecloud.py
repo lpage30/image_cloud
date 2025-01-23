@@ -7,7 +7,49 @@ import imagecloud.common.string_parsers as parsers
 import imagecloud.imagecloud_defaults as helper
 import imagecloud.common.query_integral_image as integral
 
+WeightedImageType = tuple[float, Image.Image]
 
+def create_weighted_image(weight: float, image: Image.Image) -> WeightedImageType:
+    return (weight, image)
+
+def get_weight(weighted_image: WeightedImageType) -> float:
+    return weighted_image[0]
+
+def get_image(weighted_image: WeightedImageType) -> Image.Image:
+    return weighted_image[1]
+
+def sort_by_weight(
+    weighted_images: list[WeightedImageType],
+    reverse: bool
+) -> list[WeightedImageType]:
+    return sorted(weighted_images, key=lambda i: get_weight(i), reverse=reverse)
+
+def resize_images(
+    weighted_images: list[WeightedImageType],
+    new_size: tuple[int, int],
+    reportProgress: Callable[[str], None] | None = None
+) -> list[WeightedImageType]:
+    result: list[WeightedImageType] = list()
+    total = len(weighted_images)
+    for index in range(total):
+        weighted_image = weighted_images[index]
+        if get_image(weighted_image).size[0] == new_size[0] and get_image(weighted_image).size[1] == new_size[1]:
+            result.append(weighted_image)
+            continue
+        if reportProgress:
+            reportProgress('Image[{0}/{1}] resize ({2},{3}) -> ({4},{5})'.format(
+                index+1,total,
+                get_image(weighted_image).size[0], get_image(weighted_image).size[1],
+                new_size[0], new_size[1]
+            ))
+        result.append(create_weighted_image(
+            get_weight(weighted_image),
+            get_image(weighted_image).resize(new_size)
+        ))
+    return result
+
+        
+    
 # implementation was extrapolated from wordcloud and adapted for images
  
 class ImageCloud(object):
@@ -30,7 +72,7 @@ class ImageCloud(object):
     
     max_images : number (default=helper.DEFAULT_MAX_IMAGES)
         The maximum number of images.
-a
+
     max_image_size : (width, height) or None (default=None)
         Maximum image size for the largest image. If None, height of the image is
         used.
@@ -85,7 +127,7 @@ a
                  size: tuple[int, int] | None = None,
                  background_color: str | None = None,
                  max_images: int | None = None,
-                 max_image_size: tuple[int,int] | None = None,
+                 max_image_size: tuple[int, int] | None = None,
                  min_image_size: tuple[int, int] | None = None,
                  image_step: tuple[int, int] | None = None,
                  scale: float | None = None,
@@ -124,30 +166,15 @@ a
         self._mode = mode if mode != None else helper.DEFAULT_MODE
         self._random_state = None
 
-
     def generate(self,
-                 weighted_images: list[tuple[float, Image.Image]],
-                 max_image_size: tuple[int,int] | None = None,
-                 reportProgress: Callable[[str], None] | None = None
+                weighted_images: list[WeightedImageType],
+                max_image_size: tuple[int, int] | None = None,
+                reportProgress: Callable[[str], None] | None = None
     ) -> None: 
-        
-        # make sure weighted_images are sorted and normalized
-        weighted_images.sort(key=lambda val: val[0], reverse=True )
         if len(weighted_images) <= 0:
             raise ValueError("We need at least 1 image to plot a image cloud, "
                              "got %d." % len(weighted_images))
-        weighted_images = weighted_images[:self._max_images]
-
-        max_weight = float(weighted_images[0][0])
-
-        weighted_images = [(weight / max_weight, image)
-                       for weight, image in weighted_images]
-
-        if self._random_state is not None:
-            random_state = self._random_state
-        else:
-            random_state = Random()
-
+ 
         if self._mask is not None:
             boolean_mask = self._get_boolean_mask(self._mask)
             width = self._mask.shape[1]
@@ -155,28 +182,45 @@ a
         else:
             boolean_mask = None
             height, width = self._size[1], self._size[0]
+
+        weighted_images = resize_images(
+            sort_by_weight(weighted_images, True)[:self._max_images],
+            (width, height),
+            reportProgress
+        )
+        max_weight = get_weight(weighted_images[0])
+        percent_images = [create_weighted_image(get_weight(weighted_image) / max_weight, get_image(weighted_image))
+                       for weighted_image in weighted_images]
+        
         occupancy = IntegralOccupancyMap(height, width, boolean_mask)
 
-        # create image
-        img_grey = Image.new("L", (width, height))
-        img_array = np.asarray(img_grey)
+        if self._random_state is not None:
+            random_state = self._random_state
+        else:
+            random_state = Random()
+
+        # create cloud image
+        cloud_image = Image.new("L", (width, height))
+        cloud_image_array = np.asarray(cloud_image)
         image_sizes, positions, orientations = [], [], []
 
-        last_weight = 1.
+        last_percent = 1.
 
         if max_image_size is None:
-            # if not provided use default font_size
+            # if not provided use default max_size
             max_image_size = self._max_image_size
 
         if max_image_size is None:
-            # figure out a good font size by trying to draw with
-            # just the first two words
-            if len(weighted_images) == 1:
+            # figure out a good image_size by trying the 1st two inages
+            if len(percent_images) == 1:
                 # we only have one word. We make it big!
                 image_size = self._size
             else:
-                self.generate(weighted_images[:2],
-                             max_image_size=self._size)
+                self.generate(
+                    percent_images[:2],
+                    self._size,
+                    reportProgress
+                )
                 # find image sizes
                 sizes = [x[1] for x in self.layout_]
                 try:
@@ -197,31 +241,32 @@ a
         else:
             image_size = max_image_size
 
-        if self._repeat and len(weighted_images) < self._max_images:
-            # pad frequencies with repeating images.
-            times_extend = int(np.ceil(self._max_images / len(weighted_images))) - 1
+        if self._repeat and len(percent_images) < self._max_images:
+            # pad  with repeating images.
+            times_extend = int(np.ceil(self._max_images / len(percent_images))) - 1
             # get smallest frequency
-            weighted_images_org = list(weighted_images)
-            downweight = weighted_images[-1][0]
+            percent_images_org = list(percent_images)
+            downweight = get_weight(percent_images[-1])
             for i in range(times_extend):
-                weighted_images.extend([(weight * downweight ** (i + 1), image)
-                                    for weight, image in weighted_images_org])
+                percent_images.extend([create_weighted_image(get_weight(percent_image) * downweight ** (i + 1), get_image(percent_image))
+                                    for percent_image in percent_images_org])
 
-        # start drawing grey image
-        total_images = len(weighted_images)
-        for image_index in range(total_images):
-            weight, image = weighted_images[image_index]
+        # find best location for each image
+        total = len(percent_images)
+        for index in range(total):
+            percent = get_weight(percent_images[index])
+            image = get_image(percent_images[index])
             if reportProgress:
-                reportProgress('generating imagecloud: {0}/{1}...'.format(image_index+1, total_images))
-            if weight == 0:
+                reportProgress('generating imagecloud: {0}/{1}...'.format(index+1, total))
+            if percent == 0:
                 continue
             # select the font size
             rs = self._relative_scaling
             if rs != 0:
                 image_size = (
-                                int(round((rs * (weight / float(last_weight))
+                                int(round((rs * (percent / float(last_percent))
                                        + (1 - rs)) * image_size[0])),
-                                int(round((rs * (weight / float(last_weight))
+                                int(round((rs * (percent / float(last_percent))
                                        + (1 - rs)) * image_size[1]))
                             )
             if random_state.random() < self._prefer_horizontal:
@@ -230,10 +275,11 @@ a
                 orientation = Image.ROTATE_90
             tried_other_orientation = False
             sampling_count = 0
+            
             while True:
                 sampling_count += 1
                 if reportProgress and 0 == sampling_count % 10:
-                    reportProgress('image[{0}/{1}] sampling {2}...'.format(image_index+1, total_images, sampling_count))
+                    reportProgress('image[{0}/{1}] sampling {2}...'.format(index+1, total, sampling_count))
                     
                 if image_size[0] < self._min_image_size[0] or image_size[1] < self._min_image_size[1]:
                     # image-size went too small
@@ -253,14 +299,17 @@ a
                 if result is not None:
                     # Found a place
                     break
-                # if we didn't find a place, make font smaller
+                # if we didn't find a place, make image smaller
                 # but first try to rotate!
                 if not tried_other_orientation and self._prefer_horizontal < 1:
                     orientation = (Image.ROTATE_90 if orientation is None else
                                    Image.ROTATE_90)
                     tried_other_orientation = True
                 else:
-                    image_size = (image_size[0] - self._image_step[0], image_size[1] - self._image_step[1])
+                    image_size = (
+                        image_size[0] - self._image_step[0],
+                        image_size[1] - self._image_step[1]
+                    )
                     orientation = None
 
             if image_size[0] < self._min_image_size[0] or image_size[1] < self._min_image_size[1]:
@@ -269,24 +318,29 @@ a
 
             x, y = np.array(result) + self._margin // 2
             # actually paste image
-            img_grey.paste(new_image, (x, y))
+            cloud_image.paste(new_image, (x, y))
             positions.append((x, y))
             orientations.append(orientation)
             image_sizes.append(image_size)
             
             # recompute integral image
             if self._mask is None:
-                img_array = np.asarray(img_grey)
+                cloud_image_array = np.asarray(cloud_image)
             else:
-                img_array = np.asarray(img_grey) + boolean_mask
+                cloud_image_array = np.asarray(cloud_image) + boolean_mask
             # recompute bottom right
             # the order of the cumsum's is important for speed ?!
-            occupancy.update(img_array, x, y)
-            last_weight = weight
+            occupancy.update(cloud_image_array, x, y)
+            last_percent = percent
 
-        self.layout_ = list(zip(weighted_images, image_sizes, positions,
-                                orientations))
+        self.layout_ = list(zip(
+            percent_images,
+            image_sizes,
+            positions,
+            orientations
+        ))
     
+
     def _check_generated(self) -> None:
         """Check if ``layout_`` was computed, otherwise raise error."""
         if not hasattr(self, "layout_"):
@@ -304,33 +358,42 @@ a
         else:
             height, width = self._size[1], self._size[0]
 
-        img = Image.new(self._mode, (int(width * self._scale),
-                                    int(height * self._scale)),
-                        self._background_color)
+        cloud_image = Image.new(
+            self._mode, (
+                int(width * self._scale),
+                int(height * self._scale)
+            ),
+            self._background_color
+        )
         """
         layout_ format: list[
             tuple[
-                tuple[weight, image],
+                WeightedImageType,
                 image_size,
                 position,
                 orientation
             ]
         ]
         """
-        total_items = len(self.layout_)
-        for item_index in range(total_items):
-            if reportProgress:
-                reportProgress('scaling/pasting image {0}/{1} into collage'.format(item_index+1, total_items))
+        total = len(self.layout_)
+        for index in range(total):
+            percent_image, size, position, orientation = self.layout_[index]
+            image = get_image(percent_image)
 
-            image = self.layout_[item_index][0][1]
-            position = self.layout_[item_index][2]
+            if reportProgress:
+                reportProgress('scaling/pasting image {0}/{1} into collage'.format(index+1, total))
             
-            scaled_image = image.resize((image.size[0] * self._scale, image.size[1] * self._scale))
-            
-            pos = (int(position[1] * self._scale),
-                   int(position[0] * self._scale))
-            img.paste(scaled_image, pos)
-        return self._draw_contour(img=img)
+            new_image = image.resize((
+                round(size[0] * self._scale),
+                round(size[1] * self._scale)
+            ))
+            if orientation != None:
+                new_image = new_image.transpose(orientation)
+
+            pos = (round(position[1] * self._scale),
+                   round(position[0] * self._scale))
+            cloud_image.paste(new_image, pos)
+        return self._draw_contour(img=cloud_image)
 
     def to_array(self,
         reportProgress: Callable[[str], None] | None = None

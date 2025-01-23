@@ -1,29 +1,12 @@
 import argparse
+import csv
+import os.path
+from PIL import Image
 import sys
-from typing import TypedDict
+
 import imagecloud_clis.argument_type_validators as validators
-from imagecloud.common.file_tools import (
-    to_unused_filepath,
-    rename_filenames
-)
-from imagecloud.common.images import (
-    normalize_images,
-    NORMALIZING_TYPES,
-    NORMALIZING_TYPE_HELP
-)
-from imagecloud.common.image_defaults import (
-    DEFAULT_IMAGE_FORMAT,
-    DEFAULT_NORMALIZE_TYPE
-)
-from imagecloud.common.image_defaults import IMAGE_FORMATS
-from imagecloud.common.image_defaults import IMAGE_FORMAT_HELP
-from imagecloud.common.weighted_images import (
-    CSV_FILE_HELP,
-    load_weights_images_filepaths,
-    save_weights_images,
-    to_weighted_images
-)
 from imagecloud.imagecloud_defaults import (
+    DEFAULT_IMAGE_FORMAT,
     DEFAULT_CLOUD_SIZE,
     DEFAULT_BACKGROUND_COLOR,
     DEFAULT_CONTOUR_COLOR,
@@ -38,6 +21,7 @@ from imagecloud.imagecloud_defaults import (
     DEFAULT_STEP_SIZE
 )
 from imagecloud.imagecloud_defaults import (
+    IMAGE_FORMAT_HELP,
     MASK_HELP,
     CLOUD_SIZE_HELP,
     IMAGE_STEP_HELP,
@@ -53,10 +37,26 @@ from imagecloud.imagecloud_defaults import (
     MARGIN_HELP,
     MODE_HELP
 )
-from imagecloud.imagecloud_defaults import MODE_TYPES
-from imagecloud.imagecloud import ImageCloud
+from imagecloud.imagecloud_defaults import (
+    IMAGE_FORMATS,
+    MODE_TYPES
+)
+from imagecloud.imagecloud import (
+    ImageCloud,
+    create_weighted_image,
+    WeightedImageType
+)
 
 DEFAULT_SHOW = True
+WEIGHT_HEADER = 'weight'
+IMAGE_FILEPATH_HEADER = 'image_filepath'
+CSV_FILE_HELP = '''csv file with following format:
+"{0}","{1}"
+"<full-path-to-image-file-1>",<weight-as-number-1>
+...
+"<full-path-to-image-file-N>",<weight-as-number-N>
+
+'''.format(IMAGE_FILEPATH_HEADER, WEIGHT_HEADER)
 
 class ImageCloudArguments:
     def __init__ (
@@ -64,7 +64,6 @@ class ImageCloudArguments:
         input: str,
         output: str,
         output_image_format: str,
-        normalize_type: str,
         max_image_size: tuple[int, int] | None,
         min_image_size: tuple[int, int],
         cloud_size: tuple[int, int],
@@ -83,7 +82,6 @@ class ImageCloudArguments:
         self.input = input
         self.output = output
         self.output_image_format = output_image_format
-        self.normalize_type = normalize_type
         self.max_image_size = max_image_size
         self.min_image_size = min_image_size
         self.cloud_size = cloud_size
@@ -128,13 +126,6 @@ class ImageCloudArguments:
             metavar='{0}'.format('|'.join(IMAGE_FORMATS)),
             type=lambda v: validators.is_one_of_array(parser, v, IMAGE_FORMATS),
             help='Optional,(default %(default)s) {0}'.format(IMAGE_FORMAT_HELP)
-        )
-        parser.add_argument(
-            '--normalize_type',
-            default=DEFAULT_NORMALIZE_TYPE,
-            metavar='{0}'.format('|'.join(NORMALIZING_TYPES)),
-            type=lambda v: validators.is_one_of_array(parser, v, NORMALIZING_TYPES),
-            help='Optional, (default %(default)s) {0}'.format(NORMALIZING_TYPE_HELP.format('cloud_size'))
         )
         parser.add_argument(
             '--cloud_size',
@@ -246,7 +237,6 @@ class ImageCloudArguments:
             input=args.input,
             output=args.output,
             output_image_format=args.output_image_format,
-            normalize_type=args.normalize_type,
             max_image_size=args.max_image_size,
             min_image_size=args.min_image_size,
             cloud_size=args.cloud_size,
@@ -262,7 +252,29 @@ class ImageCloudArguments:
             repeat=args.repeat,
             show=args.show
         )
-    
+
+def load_weighted_images(csv_filepath: str) -> list[WeightedImageType]:
+    result: list[WeightedImageType] = list()
+    with open(csv_filepath, 'r') as file:    
+        csv_reader = csv.DictReader(file, fieldnames=[IMAGE_FILEPATH_HEADER, WEIGHT_HEADER])
+        next(csv_reader)
+        for row in csv_reader:
+            result.append(create_weighted_image(
+                float(row[WEIGHT_HEADER]),
+                Image.open(row[IMAGE_FILEPATH_HEADER])
+            ))
+    return result
+
+def to_unused_filepath(filepath: str, new_suffix: str | None = None) -> str:
+    filepath_parts = filepath.split('.')
+    filepath_prefix = '.'.join(filepath_parts[:-1])
+    suffix = new_suffix if new_suffix != None else filepath_parts[-1]
+    result = '{0}.{1}'.format(filepath_prefix, suffix)
+    version: int = 0
+    while os.path.isfile(result):
+        version += 1
+        result = '{0}.{1}.{2}'.format(filepath_prefix, version, suffix)
+    return result
 
 def main(args: ImageCloudArguments | None = None) -> None:
     if args == None:
@@ -271,25 +283,9 @@ def main(args: ImageCloudArguments | None = None) -> None:
     print('Generating image cloud based on weights and images from {0} into {1}'.format(args.input, output_filepath))
 
     print('loading {0} ...'.format(args.input))
-    weights, images, filepaths = load_weights_images_filepaths(args.input)
-    total_images = len(images)
+    weighted_images: list[WeightedImageType] = load_weighted_images(args.input)
+    total_images = len(weighted_images)
     print('loaded {0} weights and images'.format(total_images))
-
-    print('normalizing {0} weights and images using {1} image size...'.format(total_images, args.normalize_type))
-    normalized_images = normalize_images(args.normalize_type, images, args.cloud_size, reportProgress=print)
-    normalized_filepaths = rename_filenames(filepaths, 'normalizing-type-{0}.{1}'.format(args.normalize_type, args.output_image_format))
-    normalized_csv_filename = to_unused_filepath(args.input,'normalizing-type-{0}.csv'.format(args.normalize_type))
-    print('saving {0} weights and normalized images to {1}'.format(total_images, normalized_csv_filename))
-    
-    save_weights_images(
-        weights,
-        normalized_images,
-        normalized_filepaths,
-        normalized_csv_filename,
-        args.output_image_format,
-        reportProgress=print
-    )
-    weighted_images = to_weighted_images(weights, normalized_images)
 
     image_cloud = ImageCloud(
         mask=args.mask,

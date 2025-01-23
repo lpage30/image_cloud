@@ -23,10 +23,9 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 ```
 usage: imagecloud_cli [-h] -i <csv_filepath> -o <generated_image_cloud_filepath>
                       [--output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
-                      [--normalize_type min|max|avg|median|fitsize|none] [--cloud_size "<width>,<height>"]
-                      [--min_image_size "<width>,<height>"] [--max_image_size "<width>,<height>"] [--background_color <color-name>]
-                      [--contour_width <float>] [--contour_color <color-name>] [-m <image_file_path>] [--step_size "<width>,<height>"]
-                      [--relative_scaling <float>] [--prefer_horizontal <float>] [--margin <number>]
+                      [--cloud_size "<width>,<height>"] [--min_image_size "<width>,<height>"] [--max_image_size "<width>,<height>"]
+                      [--background_color <color-name>] [--contour_width <float>] [--contour_color <color-name>] [-m <image_file_path>]
+                      [--step_size "<width>,<height>"] [--relative_scaling <float>] [--prefer_horizontal <float>] [--margin <number>]
                       [--mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [--repeat] [--no-repeat]
                       [--show] [--no-show]
 
@@ -46,11 +45,6 @@ options:
                         Required, output file path for generated image cloud
   --output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
                         Optional,(default png) image format: [blp,bmp,dds,dib,eps,gif,icns,ico,im,jpeg,mpo,msp,pcx,pfm,png,ppm,sgi,webp,xbm]
-  --normalize_type min|max|avg|median|fitsize|none
-                        Optional, (default fitsize) type of normalization applied to all images
-                        - min|max|avg|median: resize all images to size of the min|max|avg|median image
-                        - fitsize: resize all images to equally fit into provided 'cloud_size' size
-                        - none: no normalization applied
   --cloud_size "<width>,<height>"
                         Optional, (default 400,200) width and height of canvas
   --min_image_size "<width>,<height>"
@@ -92,8 +86,7 @@ options:
                         Optional, (default RGBA) Transparent background will be generated when mode is "RGBA" and background_color is None.
   --repeat              Optional, Whether to repeat images until max_images or min_image_size is reached.
   --no-repeat           Optional, (default) Whether to repeat images until max_images or min_image_size is reached.
-  --show                Optional, (default) show resulting image cloud when finished.
-  --no-show             Optional, do not show resulting image cloud when finished.
+  --show                Optional, (default) show resulting image cloud when finishe
 ```
 
 ## CSV to import

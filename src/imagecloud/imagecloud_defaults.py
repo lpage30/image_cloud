@@ -1,3 +1,4 @@
+DEFAULT_IMAGE_FORMAT = 'png'
 DEFAULT_CLOUD_SIZE = '400,200'
 DEFAULT_STEP_SIZE = '1,1'
 DEFAULT_MAX_IMAGE_SIZE = None
@@ -12,6 +13,29 @@ DEFAULT_MARGIN = '1'
 DEFAULT_MODE = 'RGBA'
 DEFAULT_MAX_IMAGES = '200'
 DEFAULT_SCALE = '1.0'
+
+IMAGE_FORMATS = [
+    'blp',
+    'bmp',
+    'dds',
+    'dib',
+    'eps',
+    'gif',
+    'icns',
+    'ico',
+    'im',
+    'jpeg',
+    'mpo',
+    'msp',
+    'pcx',
+    'pfm',
+    'png',
+    'ppm',
+    'sgi',
+    'webp',
+    'xbm'
+]
+IMAGE_FORMAT_HELP = 'image format: [{0}]'.format(','.join(IMAGE_FORMATS))
     
 MASK_HELP = '''Image file
 If not None, gives a binary mask on where to draw words.
