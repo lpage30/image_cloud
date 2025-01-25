@@ -1,55 +1,22 @@
-from collections.abc import Callable
+from imagecloud.console_logger import ConsoleLogger
 from PIL import Image, ImageFilter
-import warnings
 from random import Random
+import warnings
 import numpy as np
-import imagecloud.common.string_parsers as parsers
+import imagecloud.string_parsers as parsers
+from imagecloud.weighted_image import (
+    NamedImage,
+    WeightedImage,
+    sort_by_weight,
+    resize_images_to_proportionally_fit,
+    shrink_size_by_step,
+    transpose_size,
+    remove_transpose_size,
+)
+from imagecloud.integral_occupancy_map import IntegralOccupancyMap
 import imagecloud.imagecloud_defaults as helper
-import imagecloud.common.query_integral_image as integral
 
-WeightedImageType = tuple[float, Image.Image]
 
-def create_weighted_image(weight: float, image: Image.Image) -> WeightedImageType:
-    return (weight, image)
-
-def get_weight(weighted_image: WeightedImageType) -> float:
-    return weighted_image[0]
-
-def get_image(weighted_image: WeightedImageType) -> Image.Image:
-    return weighted_image[1]
-
-def sort_by_weight(
-    weighted_images: list[WeightedImageType],
-    reverse: bool
-) -> list[WeightedImageType]:
-    return sorted(weighted_images, key=lambda i: get_weight(i), reverse=reverse)
-
-def resize_images(
-    weighted_images: list[WeightedImageType],
-    new_size: tuple[int, int],
-    reportProgress: Callable[[str], None] | None = None
-) -> list[WeightedImageType]:
-    result: list[WeightedImageType] = list()
-    total = len(weighted_images)
-    for index in range(total):
-        weighted_image = weighted_images[index]
-        if get_image(weighted_image).size[0] == new_size[0] and get_image(weighted_image).size[1] == new_size[1]:
-            result.append(weighted_image)
-            continue
-        if reportProgress:
-            reportProgress('Image[{0}/{1}] resize ({2},{3}) -> ({4},{5})'.format(
-                index+1,total,
-                get_image(weighted_image).size[0], get_image(weighted_image).size[1],
-                new_size[0], new_size[1]
-            ))
-        result.append(create_weighted_image(
-            get_weight(weighted_image),
-            get_image(weighted_image).resize(new_size)
-        ))
-    return result
-
-        
-    
 # implementation was extrapolated from wordcloud and adapted for images
  
 class ImageCloud(object):
@@ -65,7 +32,7 @@ class ImageCloud(object):
         changed in the most recent version!]
 
     size: (width, height) see helper.DEFAULT_CLOUD_SIZE
-        width and height of canvas
+        width and height of imagecloud
 
     background_color : color value (default=helper.DEFAULT_BACKGROUND_COLOR)
         Background color for the image cloud image.
@@ -81,13 +48,15 @@ class ImageCloud(object):
         Smallest image size to use. Will stop when there is no more room in this
         size.
 
-    image_step : (width, height) (default=helper.DEFAULT_STEP_SIZE)
-        Step size for the image. image_step[0] | image_step[1] > 1 might speed up computation but
+    image_step : int (default=helper.DEFAULT_STEP_SIZE)
+        Step size for the image. image_step > 1 might speed up computation but
         give a worse fit.
-        
+    
+    maintain_aspect_ratio: bool (default=helper.DEFAULT_MAINTAIN_ASPECT_RATIO)
+    
     scale : float (default=helper.DEFAULT_SCALE)
         Scaling between computation and drawing. For large word-cloud images,
-        using scale instead of larger canvas size is significantly faster, but
+        using scale instead of larger imagecloud size is significantly faster, but
         might lead to a coarser fit for the words.
 
     contour_width: float (default=helper.DEFAULT_CONTOUR_WIDTH)
@@ -99,15 +68,6 @@ class ImageCloud(object):
     repeat : bool, default=helper.DEFAULT_REPEAT
         Whether to repeat images until max_images or min_image_size
         is reached.
-
-    relative_scaling : float (default=None)
-        Importance of relative word frequencies for font-size.  With
-        relative_scaling=0, only word-ranks are considered.  With
-        relative_scaling=1, a word that is twice as frequent will have twice
-        the size.  If you want to consider the word frequencies and not only
-        their rank, relative_scaling around .5 often looks good.
-        If 'auto' it will be set to 0.5 unless repeat is true, in which
-        case it will be set to 0.
     
     prefer_horizontal : float (default=helper.DEFAULT_PREFER_HORIZONTAL)
         The ratio of times to try horizontal fitting as opposed to vertical.
@@ -129,15 +89,16 @@ class ImageCloud(object):
                  max_images: int | None = None,
                  max_image_size: tuple[int, int] | None = None,
                  min_image_size: tuple[int, int] | None = None,
-                 image_step: tuple[int, int] | None = None,
+                 image_step: int | None = None,
+                 maintain_aspect_ratio: bool | None = None,
                  scale: float | None = None,
                  contour_width: float | None = None,
                  contour_color: str | None = None,
                  repeat: bool | None = None,
-                 relative_scaling: float | None = None,
                  prefer_horizontal: float | None = None,
                  margin: int | None = None,
-                 mode: str | None = None
+                 mode: str | None = None,
+                 logger: ConsoleLogger | None = None
     ) -> None:
         self._mask = np.array(mask) if mask != None else None
         self._size = size if size != None else parsers.parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
@@ -145,196 +106,221 @@ class ImageCloud(object):
         self._max_images = max_images if max_images != None else parsers.parse_to_int(helper.DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
         self._min_image_size = min_image_size if min_image_size != None else helper.parse_to_tuple(helper.DEFAULT_MIN_IMAGE_SIZE)
-        self._image_step = image_step if image_step != None else parsers.parse_to_tuple(helper.DEFAULT_STEP_SIZE)
+        self._image_step = image_step if image_step != None else parsers.parse_to_int(helper.DEFAULT_STEP_SIZE)
+        self._maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio != None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
         self._scale = scale if scale != None else parsers.parse_to_float(helper.DEFAULT_SCALE)
         self._contour_width = contour_width if contour_width != None else parsers.parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
         self._contour_color = contour_color if contour_color != None else helper.DEFAULT_CONTOUR_COLOR
         self._repeat = repeat if repeat != None else helper.DEFAULT_REPEAT
+        self._logger = logger
 
-        if relative_scaling == None:
-            if self._repeat:
-                relative_scaling = 0
-            else:
-                relative_scaling = .5
-
-        if relative_scaling < 0 or relative_scaling > 1:
-            raise ValueError("relative_scaling needs to be "
-                             "between 0 and 1, got %f." % relative_scaling)
-        self._relative_scaling = relative_scaling
         self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else parsers.parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
         self._margin = margin if margin != None else parsers.parse_to_int(helper.DEFAULT_MARGIN)
         self._mode = mode if mode != None else helper.DEFAULT_MODE
         self._random_state = None
+        self.layout_: list[tuple[
+            NamedImage,
+            tuple[int, int],
+            tuple[int, int],
+            Image.Transpose | None
+        ]] | None = None
 
     def generate(self,
-                weighted_images: list[WeightedImageType],
-                max_image_size: tuple[int, int] | None = None,
-                reportProgress: Callable[[str], None] | None = None
+                weighted_images: list[WeightedImage],
+                max_image_size: tuple[int, int] | None = None
     ) -> None: 
-        if len(weighted_images) <= 0:
-            raise ValueError("We need at least 1 image to plot a image cloud, "
-                             "got %d." % len(weighted_images))
- 
         if self._mask is not None:
             boolean_mask = self._get_boolean_mask(self._mask)
-            width = self._mask.shape[1]
-            height = self._mask.shape[0]
+            imagecloud_size = (
+                self._mask.shape[0],
+                self._mask.shape[1]
+            )
         else:
             boolean_mask = None
-            height, width = self._size[1], self._size[0]
+            imagecloud_size = self._size
 
-        weighted_images = resize_images(
-            sort_by_weight(weighted_images, True)[:self._max_images],
-            (width, height),
-            reportProgress
+        weighted_images = sort_by_weight(weighted_images, True)[:self._max_images]
+        weighted_images = resize_images_to_proportionally_fit(
+            weighted_images,
+            imagecloud_size,
+            self._maintain_aspect_ratio,
+            self._image_step,
+            self._logger
         )
-        max_weight = get_weight(weighted_images[0])
-        percent_images = [create_weighted_image(get_weight(weighted_image) / max_weight, get_image(weighted_image))
-                       for weighted_image in weighted_images]
         
-        occupancy = IntegralOccupancyMap(height, width, boolean_mask)
+        self._generate(
+            weighted_images,
+            imagecloud_size,
+            boolean_mask,
+            self._random_state if self._random_state != None else Random(),
+            max_image_size
+        )
 
-        if self._random_state is not None:
-            random_state = self._random_state
-        else:
-            random_state = Random()
+    def _generate(self,
+                proportional_images: list[WeightedImage],
+                imagecloud_size: tuple[int, int],
+                boolean_mask: bool | np.ndarray | None,  
+                random_state: Random,              
+                max_image_size: tuple[int, int] | None
+    ) -> None: 
 
-        # create cloud image
-        cloud_image = Image.new("L", (width, height))
-        cloud_image_array = np.asarray(cloud_image)
-        image_sizes, positions, orientations = [], [], []
+        if len(proportional_images) <= 0:
+            raise ValueError("We need at least 1 image to plot a image cloud, "
+                             "got %d." % len(proportional_images))
+        
+        occupancy = IntegralOccupancyMap(imagecloud_size, boolean_mask)
 
-        last_percent = 1.
+        images: list[NamedImage] = []
+        image_sizes: list[tuple[int,int]] = []
+        positions: list[tuple[int, int]] = []
+        orientations: list[Image.Transpose | None] = []
 
         if max_image_size is None:
             # if not provided use default max_size
             max_image_size = self._max_image_size
 
         if max_image_size is None:
+            sizes: list[tuple[int, int]] = []
             # figure out a good image_size by trying the 1st two inages
-            if len(percent_images) == 1:
+            if len(proportional_images) == 1:
                 # we only have one word. We make it big!
-                image_size = self._size
+                sizes = [self._size]
             else:
-                self.generate(
-                    percent_images[:2],
-                    self._size,
-                    reportProgress
+                self._generate(
+                    proportional_images[:2],
+                    imagecloud_size,
+                    boolean_mask,
+                    random_state,
+                    self._size
                 )
                 # find image sizes
                 sizes = [x[1] for x in self.layout_]
-                try:
-                    image_size = (
-                        int(2 * sizes[0][0] * sizes[1][0] / (sizes[0][0] + sizes[1][0])),
-                        int(2 * sizes[0][1] * sizes[1][1] / (sizes[0][1] + sizes[1][1]))
-                    )
-                # quick fix for if self.layout_ contains less than 2 values
-                # on very small images it can be empty
-                except IndexError:
-                    try:
-                        image_size = sizes[0]
-                    except IndexError:
-                        raise ValueError(
-                            "Couldn't find space to paste. Either the Canvas size"
-                            " is too small or too much of the image is masked "
-                            "out.")
-        else:
-            image_size = max_image_size
+            
+            if 0 == len(sizes):
+                raise ValueError(
+                    "Couldn't find space to paste. Either the imagecloud size"
+                    " is too small or too much of the image is masked "
+                    "out.")
+            if 1 < len(sizes):
+                max_image_size = (
+                    int(2 * sizes[0][0] * sizes[1][0] / (sizes[0][0] + sizes[1][0])),
+                    int(2 * sizes[0][1] * sizes[1][1] / (sizes[0][1] + sizes[1][1]))
+                )
+            else:
+                max_image_size = sizes[0]
 
-        if self._repeat and len(percent_images) < self._max_images:
+        if self._repeat and len(proportional_images) < self._max_images:
             # pad  with repeating images.
-            times_extend = int(np.ceil(self._max_images / len(percent_images))) - 1
-            # get smallest frequency
-            percent_images_org = list(percent_images)
-            downweight = get_weight(percent_images[-1])
+            times_extend = int(np.ceil(self._max_images / len(proportional_images))) - 1
+            # get smallest proportion
+            proportional_images_org = list(proportional_images)
+            smallest_proportion = proportional_images[-1].weight
             for i in range(times_extend):
-                percent_images.extend([create_weighted_image(get_weight(percent_image) * downweight ** (i + 1), get_image(percent_image))
-                                    for percent_image in percent_images_org])
+                proportional_images.extend([
+                    WeightedImage(
+                        weighted_image.weight * smallest_proportion ** (i + 1),
+                        weighted_image.image,
+                        weighted_image.name
+                    ) for weighted_image in proportional_images_org
+                ])
 
         # find best location for each image
-        total = len(percent_images)
+        total = len(proportional_images)
+        orientation: None | Image.Transpose = None
         for index in range(total):
-            percent = get_weight(percent_images[index])
-            image = get_image(percent_images[index])
-            if reportProgress:
-                reportProgress('generating imagecloud: {0}/{1}...'.format(index+1, total))
-            if percent == 0:
+            weight = proportional_images[index].weight
+            image = proportional_images[index].image
+            name = proportional_images[index].name
+            if weight == 0:
+                if self._logger:
+                    self._logger.warning('Dropping Image[{0}/{1}] {2}. 0 weight'.format(
+                        index+1, total, name
+                    ))
                 continue
-            # select the font size
-            rs = self._relative_scaling
-            if rs != 0:
-                image_size = (
-                                int(round((rs * (percent / float(last_percent))
-                                       + (1 - rs)) * image_size[0])),
-                                int(round((rs * (percent / float(last_percent))
-                                       + (1 - rs)) * image_size[1]))
-                            )
+
+            if self._logger:
+                self._logger.info('generating imagecloud: Image[{0}/{1}] {2}...'.format(index+1, total, name))
+
             if random_state.random() < self._prefer_horizontal:
                 orientation = None
             else:
-                orientation = Image.ROTATE_90
+                orientation = Image.Transpose.ROTATE_90
             tried_other_orientation = False
             sampling_count = 0
-            
+            prior_image_size = image.size
+            new_image_size = image.size
             while True:
                 sampling_count += 1
-                if reportProgress and 0 == sampling_count % 10:
-                    reportProgress('image[{0}/{1}] sampling {2}...'.format(index+1, total, sampling_count))
+                if self._logger and 0 == sampling_count % 10:
+                    self._logger.debug('Image[{0}/{1}] {2} sampling {3}...'.format(index+1, total, name, sampling_count))
                     
-                if image_size[0] < self._min_image_size[0] or image_size[1] < self._min_image_size[1]:
+                if new_image_size[0] < self._min_image_size[0] or new_image_size[1] < self._min_image_size[1]:
                     # image-size went too small
                     break
+
+                # change size/orientation if sampling_count > 1
+                if new_image_size != prior_image_size and self._logger:
+                        self._logger.debug('Image[{0}/{1}] {2} sampling {3} resize ({4},{5}) -> ({6},{7})'.format(
+                            index+1, total, sampling_count, name,
+                            image.size[0], image.size[1],
+                            new_image_size[0], new_image_size[1]
+                        ))
                 
-                # try to find a position
-                new_image = image.resize(image_size)
                 # transpose image optionally
                 if orientation != None:
-                    new_image = new_image.transpose(orientation)
-                
-                # get size of resulting image
-                # find possible places using integral image:
-                result = occupancy.sample_position(new_image.size[1] + self._margin,
-                                                   new_image.size[0] + self._margin,
-                                                   random_state)
-                if result is not None:
+                    if self._logger:
+                        self._logger.debug('Image[{0}/{1}] {2} sampling {3} transpose {4}'.format(
+                            index+1, total, name, sampling_count, orientation.name
+                        ))
+                    new_image_size = transpose_size(new_image_size, orientation)
+
+                # find a free position to occupy                
+                paste_position = occupancy.find_position(
+                    (
+                        new_image_size[0] + self._margin,
+                        new_image_size[1] + self._margin
+                    ),
+                    random_state
+                )
+                if paste_position is not None:
                     # Found a place
                     break
+
                 # if we didn't find a place, make image smaller
                 # but first try to rotate!
                 if not tried_other_orientation and self._prefer_horizontal < 1:
-                    orientation = (Image.ROTATE_90 if orientation is None else
-                                   Image.ROTATE_90)
+                    orientation = (Image.Transpose.ROTATE_90 if orientation is None else
+                                   Image.Transpose.ROTATE_90)
                     tried_other_orientation = True
                 else:
-                    image_size = (
-                        image_size[0] - self._image_step[0],
-                        image_size[1] - self._image_step[1]
-                    )
-                    orientation = None
+                    if orientation != None:
+                        new_image_size = remove_transpose_size(new_image_size, orientation)
+                        orientation = None
+                    prior_image_size = new_image_size
+                    new_image_size = shrink_size_by_step(new_image_size, self._image_step, self._maintain_aspect_ratio)
+                    
 
-            if image_size[0] < self._min_image_size[0] or image_size[1] < self._min_image_size[1]:
-                # we were unable to draw any more
+            if new_image_size[0] < self._min_image_size[0] or new_image_size[1] < self._min_image_size[1]:
+                if self._logger:
+                    self._logger.warning('Dropping Image[{0}/{1}] {2} after {3} samplings. resized too small'.format(
+                        index+1, total, name, sampling_count
+                    ))
                 break
 
-            x, y = np.array(result) + self._margin // 2
-            # actually paste image
-            cloud_image.paste(new_image, (x, y))
-            positions.append((x, y))
+            paste_position = (
+                paste_position[0] + self._margin //2,
+                paste_position[1] + self._margin //2
+            )
+
+            images.append(proportional_images[index])
+            image_sizes.append(new_image_size)
+            positions.append(paste_position)
             orientations.append(orientation)
-            image_sizes.append(image_size)
             
-            # recompute integral image
-            if self._mask is None:
-                cloud_image_array = np.asarray(cloud_image)
-            else:
-                cloud_image_array = np.asarray(cloud_image) + boolean_mask
-            # recompute bottom right
-            # the order of the cumsum's is important for speed ?!
-            occupancy.update(cloud_image_array, x, y)
-            last_percent = percent
+            occupancy.reserve(paste_position, new_image_size)
 
         self.layout_ = list(zip(
-            percent_images,
+            images,
             image_sizes,
             positions,
             orientations
@@ -348,8 +334,7 @@ class ImageCloud(object):
                              " first.")
 
     def to_image(
-        self,
-        reportProgress: Callable[[str], None] | None = None
+        self
     ) -> Image.Image:
         self._check_generated()
         if self._mask is not None:
@@ -358,7 +343,7 @@ class ImageCloud(object):
         else:
             height, width = self._size[1], self._size[0]
 
-        cloud_image = Image.new(
+        imagecloud_image = Image.new(
             self._mode, (
                 int(width * self._scale),
                 int(height * self._scale)
@@ -368,7 +353,7 @@ class ImageCloud(object):
         """
         layout_ format: list[
             tuple[
-                WeightedImageType,
+                NamedImage,
                 image_size,
                 position,
                 orientation
@@ -376,28 +361,50 @@ class ImageCloud(object):
         ]
         """
         total = len(self.layout_)
+        if self._logger:
+            self._logger.info('pasting {0} images into imagecloud'.format(total))
+        
         for index in range(total):
-            percent_image, size, position, orientation = self.layout_[index]
-            image = get_image(percent_image)
+            named_image: NamedImage = self.layout_[index][0]
+            size: tuple[int, int] = self.layout_[index][1]
+            position: tuple[int, int] = self.layout_[index][2]
+            orientation: Image.Transpose | None = self.layout_[index][3]
+            new_image = named_image.image
+            name = named_image.name
 
-            if reportProgress:
-                reportProgress('scaling/pasting image {0}/{1} into collage'.format(index+1, total))
-            
-            new_image = image.resize((
+            if self._logger:
+                self._logger.info('pasting Image[{0}/{1}] {2} into imagecloud'.format(index+1, total, name))
+ 
+            new_size = (
                 round(size[0] * self._scale),
                 round(size[1] * self._scale)
-            ))
+            )
+            # always transpose 1st then resize. size will be in transposed dimensions
             if orientation != None:
+                if self._logger:
+                    self._logger.info('Transposing Image[{0}/{1}] {2} {3}'.format(
+                        index+1, total, name, orientation.name
+                    ))
                 new_image = new_image.transpose(orientation)
+
+            if new_image.size != new_size:
+                if self._logger:
+                    self._logger.info('Resizing Image[{0}/{1}] {2} ({3},{4}) -> ({5},{6})'.format(
+                        index+1, total, name,
+                        new_image.size[0], new_image.size[1],
+                        new_size[0], new_size[1]
+                    ))
+                new_image = new_image.resize(new_size)
+
+            # transpose image optionally
+           
 
             pos = (round(position[1] * self._scale),
                    round(position[0] * self._scale))
-            cloud_image.paste(new_image, pos)
-        return self._draw_contour(img=cloud_image)
+            imagecloud_image.paste(new_image, pos)
+        return self._draw_contour(img=imagecloud_image)
 
-    def to_array(self,
-        reportProgress: Callable[[str], None] | None = None
-    ) -> np.ndarray:
+    def to_array(self) -> np.ndarray:
         """Convert to numpy array.
 
         Returns
@@ -405,7 +412,7 @@ class ImageCloud(object):
         image : nd-array size (width, height, 3)
             Word cloud image as numpy matrix.
         """
-        return np.array(self.to_image(reportProgress=reportProgress))
+        return np.array(self.to_image())
         
         
     def _draw_contour(self, img) -> Image.Image:
@@ -452,36 +459,3 @@ class ImageCloud(object):
             raise ValueError("Got mask of invalid shape: %s" % str(mask.shape))
         return boolean_mask
 
-
-# copied from https://github.com/amueller/word_cloud/blob/main/wordcloud/wordcloud.py
-class IntegralOccupancyMap(object):
-    def __init__(self, height, width, mask):
-        self.height = height
-        self.width = width
-        if mask is not None:
-            # the order of the cumsum's is important for speed ?!
-            self.integral = np.cumsum(np.cumsum(255 * mask, axis=1),
-                                      axis=0).astype(np.uint32)
-        else:
-            self.integral = np.zeros((height, width), dtype=np.uint32)
-
-    def sample_position(self, size_x, size_y, random_state):
-        
-        return integral.query_integral_image(self.integral, size_x, size_y,
-                                    random_state)
-
-    def update(self, img_array, pos_x, pos_y):
-        partial_integral = np.cumsum(np.cumsum(img_array[pos_x:, pos_y:],
-                                               axis=1), axis=0)
-        # paste recomputed part into old image
-        # if x or y is zero it is a bit annoying
-        if pos_x > 0:
-            if pos_y > 0:
-                partial_integral += (self.integral[pos_x - 1, pos_y:]
-                                     - self.integral[pos_x - 1, pos_y - 1])
-            else:
-                partial_integral += self.integral[pos_x - 1, pos_y:]
-        if pos_y > 0:
-            partial_integral += self.integral[pos_x:, pos_y - 1][:, np.newaxis]
-
-        self.integral[pos_x:, pos_y:] = partial_integral

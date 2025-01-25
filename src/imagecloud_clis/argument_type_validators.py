@@ -1,10 +1,12 @@
 import argparse
-from imagecloud.common.string_parsers import (
+from imagecloud.string_parsers import (
     parse_to_existing_filepath,
     parse_to_int,
     parse_to_float,
     parse_to_tuple,
 )
+
+
 def existing_filepath(parser: argparse.ArgumentParser, value: str) -> str:
     try:
         return parse_to_existing_filepath(value)

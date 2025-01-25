@@ -5,5 +5,3 @@ rm -rf ${script_path}/dist
 rm -rf ${script_path}/src/image_cloud.egg-info
 
 find ${script_path} -type d -name '__pycache__' -exec rm -rf "{}" +
-find ${script_path} -type f -name '*.c' -exec rm -f "{}" + 
-find ${script_path} -type f -name '*.so' -exec rm -f "{}" + 

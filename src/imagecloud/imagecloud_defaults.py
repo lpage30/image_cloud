@@ -1,13 +1,13 @@
 DEFAULT_IMAGE_FORMAT = 'png'
 DEFAULT_CLOUD_SIZE = '400,200'
-DEFAULT_STEP_SIZE = '1,1'
+DEFAULT_MAINTAIN_ASPECT_RATIO = True
+DEFAULT_STEP_SIZE = '1'
 DEFAULT_MAX_IMAGE_SIZE = None
 DEFAULT_MIN_IMAGE_SIZE = '4,4'
 DEFAULT_BACKGROUND_COLOR = None
 DEFAULT_CONTOUR_WIDTH = '0'
 DEFAULT_CONTOUR_COLOR = 'black'
 DEFAULT_REPEAT = False
-DEFAULT_RELATIVE_SCALING = None
 DEFAULT_PREFER_HORIZONTAL = '0.9'
 DEFAULT_MARGIN = '1'
 DEFAULT_MODE = 'RGBA'
@@ -47,8 +47,9 @@ while other entries will be free to draw on.\
 
 CLOUD_SIZE_HELP = 'width and height of canvas'
 
-IMAGE_STEP_HELP = '''Step size for the image. 
-image_step[0] | image_step[1] > 1 might speed up computation
+MAINTAIN_ASPECT_RATIO_HELP = '''resize of images to fit will maintain aspect ratio'''
+STEP_SIZE_HELP = '''Step size for the image. 
+image_step> 1 might speed up computation
 but give a worse fit.
 '''
 
@@ -67,14 +68,6 @@ CONTOUR_WIDTH_HELP = 'If mask is not None and contour_width > 0, draw the mask c
 CONTOUR_COLOR_HELP = 'Mask contour color.'
 
 REPEAT_HELP = 'Whether to repeat images until max_images or min_image_size is reached.'
-
-RELATIVE_SCALING_HELP = '''Importance of relative image frequencies for image-size.
-With relative_scaling = 0, only image-ranks are considered.
-With relative_scaling = 1, a image that is twice as frequent will have twice the size.
-If you want to consider the image frequencies and not only their rank,
-relative_scaling around .5 often looks good.
-default: it will be set to 0.5 unless repeat is true, in which case it will be set to 0.
-    '''
 
 PREFER_HORIZONTAL_HELP = '''The ratio of times to try horizontal fitting as opposed to vertical.
 If prefer_horizontal < 1, the algorithm will try rotating the image if it doesn't fit. 
