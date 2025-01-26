@@ -1,5 +1,6 @@
 from imagecloud.console_logger import ConsoleLogger
 import os
+import csv
 from PIL import Image
 
 class NamedImage(object):
@@ -188,4 +189,21 @@ def resize_images_to_proportionally_fit(
         ))
     return result
 
-        
+WEIGHTED_IMAGE_WEIGHT = 'weight'
+WEIGHTED_IMAGE_IMAGE_FILEPATH = 'image_filepath'
+WEIGHTED_IMAGES_CSV_FILE_HELP = '''csv file for weighted images with following format:
+"{0}","{1}"
+"<full-path-to-image-file-1>",<weight-as-number-1>
+...
+"<full-path-to-image-file-N>",<weight-as-number-N>
+
+'''.format(WEIGHTED_IMAGE_IMAGE_FILEPATH, WEIGHTED_IMAGE_WEIGHT)
+
+def load_weighted_images(csv_filepath: str) -> list[WeightedImage]:
+    result: list[WeightedImage] = list()
+    with open(csv_filepath, 'r') as file:    
+        csv_reader = csv.DictReader(file, fieldnames=[WEIGHTED_IMAGE_IMAGE_FILEPATH, WEIGHTED_IMAGE_WEIGHT])
+        next(csv_reader)
+        for row in csv_reader:
+            result.append(WeightedImage.load(float(row[WEIGHTED_IMAGE_WEIGHT]), row[WEIGHTED_IMAGE_IMAGE_FILEPATH]))
+    return result

@@ -22,7 +22,8 @@ dependencies = [
 Homepage = "https://github.com/lpage30/image_cloud"
 
 [project.scripts]
-imagecloud_cli = "imagecloud_clis.imagecloud_cli:main"
+generate_imagecloud = "imagecloud_clis.generate_cli:generate"
+layout_imagecloud = "imagecloud_clis.layout_cli:layout"
 
 [tool.setuptools.packages.find]
 where = ["src"]

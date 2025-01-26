@@ -1,9 +1,13 @@
 from imagecloud.console_logger import ConsoleLogger
-from PIL import Image, ImageFilter
+from PIL import Image
 from random import Random
 import warnings
 import numpy as np
-import imagecloud.string_parsers as parsers
+from imagecloud.imagecloud_helpers import (
+    parse_to_int,
+    parse_to_float,
+    parse_to_tuple,
+)
 from imagecloud.weighted_image import (
     NamedImage,
     WeightedImage,
@@ -15,7 +19,12 @@ from imagecloud.weighted_image import (
 )
 from imagecloud.integral_occupancy_map import IntegralOccupancyMap
 import imagecloud.imagecloud_defaults as helper
-
+from imagecloud.layout import (
+    LayoutContour,
+    LayoutCanvas,
+    LayoutItem,
+    Layout
+)
 
 # implementation was extrapolated from wordcloud and adapted for images
  
@@ -101,34 +110,29 @@ class ImageCloud(object):
                  logger: ConsoleLogger | None = None
     ) -> None:
         self._mask = np.array(mask) if mask != None else None
-        self._size = size if size != None else parsers.parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
+        self._size = size if size != None else parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
         self._background_color = background_color if background_color != None else helper.DEFAULT_BACKGROUND_COLOR
-        self._max_images = max_images if max_images != None else parsers.parse_to_int(helper.DEFAULT_MAX_IMAGES)
+        self._max_images = max_images if max_images != None else parse_to_int(helper.DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
         self._min_image_size = min_image_size if min_image_size != None else helper.parse_to_tuple(helper.DEFAULT_MIN_IMAGE_SIZE)
-        self._image_step = image_step if image_step != None else parsers.parse_to_int(helper.DEFAULT_STEP_SIZE)
+        self._image_step = image_step if image_step != None else parse_to_int(helper.DEFAULT_STEP_SIZE)
         self._maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio != None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
-        self._scale = scale if scale != None else parsers.parse_to_float(helper.DEFAULT_SCALE)
-        self._contour_width = contour_width if contour_width != None else parsers.parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
+        self._scale = scale if scale != None else parse_to_float(helper.DEFAULT_SCALE)
+        self._contour_width = contour_width if contour_width != None else parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
         self._contour_color = contour_color if contour_color != None else helper.DEFAULT_CONTOUR_COLOR
         self._repeat = repeat if repeat != None else helper.DEFAULT_REPEAT
         self._logger = logger
 
-        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else parsers.parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
-        self._margin = margin if margin != None else parsers.parse_to_int(helper.DEFAULT_MARGIN)
+        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
+        self._margin = margin if margin != None else parse_to_int(helper.DEFAULT_MARGIN)
         self._mode = mode if mode != None else helper.DEFAULT_MODE
         self._random_state = None
-        self.layout_: list[tuple[
-            NamedImage,
-            tuple[int, int],
-            tuple[int, int],
-            Image.Transpose | None
-        ]] | None = None
-
+        self.layout_: Layout | None = None
+        
     def generate(self,
                 weighted_images: list[WeightedImage],
                 max_image_size: tuple[int, int] | None = None
-    ) -> None: 
+    ) -> Layout: 
         if self._mask is not None:
             boolean_mask = self._get_boolean_mask(self._mask)
             imagecloud_size = (
@@ -148,10 +152,9 @@ class ImageCloud(object):
             self._logger
         )
         
-        self._generate(
+        return self._generate(
             weighted_images,
             imagecloud_size,
-            boolean_mask,
             self._random_state if self._random_state != None else Random(),
             max_image_size
         )
@@ -159,16 +162,15 @@ class ImageCloud(object):
     def _generate(self,
                 proportional_images: list[WeightedImage],
                 imagecloud_size: tuple[int, int],
-                boolean_mask: bool | np.ndarray | None,  
                 random_state: Random,              
                 max_image_size: tuple[int, int] | None
-    ) -> None: 
+    ) -> Layout: 
 
         if len(proportional_images) <= 0:
             raise ValueError("We need at least 1 image to plot a image cloud, "
                              "got %d." % len(proportional_images))
         
-        occupancy = IntegralOccupancyMap(imagecloud_size, boolean_mask)
+        occupancy = IntegralOccupancyMap(imagecloud_size)
 
         images: list[NamedImage] = []
         image_sizes: list[tuple[int,int]] = []
@@ -186,15 +188,14 @@ class ImageCloud(object):
                 # we only have one word. We make it big!
                 sizes = [self._size]
             else:
-                self._generate(
+                layout = self._generate(
                     proportional_images[:2],
                     imagecloud_size,
-                    boolean_mask,
                     random_state,
                     self._size
                 )
                 # find image sizes
-                sizes = [x[1] for x in self.layout_]
+                sizes = [x.size for x in layout.items]
             
             if 0 == len(sizes):
                 raise ValueError(
@@ -317,15 +318,33 @@ class ImageCloud(object):
             positions.append(paste_position)
             orientations.append(orientation)
             
-            occupancy.reserve(paste_position, new_image_size)
+            occupancy.reserve(paste_position, new_image_size, index + 1)
 
-        self.layout_ = list(zip(
-            images,
-            image_sizes,
-            positions,
-            orientations
-        ))
-    
+        items: list[LayoutItem] = list()
+        for i in range(len(images)):
+            items.append(
+                LayoutItem(
+                    images[i],
+                    image_sizes[i],
+                    positions[i],
+                    orientations[i]
+                )
+            )
+        self.layout_ = Layout(
+            LayoutCanvas(
+                imagecloud_size,
+                self._mode,
+                self._background_color,
+                occupancy.occupancy_map
+            ),
+            items,
+            LayoutContour(
+                self._get_boolean_mask(self._mask) * 255 if self._mask != None else None,
+                self._contour_width,
+                self._contour_color
+            )
+        )
+        return self.layout_
 
     def _check_generated(self) -> None:
         """Check if ``layout_`` was computed, otherwise raise error."""
@@ -337,72 +356,11 @@ class ImageCloud(object):
         self
     ) -> Image.Image:
         self._check_generated()
-        if self._mask is not None:
-            width = self._mask.shape[1]
-            height = self._mask.shape[0]
-        else:
-            height, width = self._size[1], self._size[0]
+        return self.layout_.to_image(
+            self._scale,
+            self._logger
+        ).image
 
-        imagecloud_image = Image.new(
-            self._mode, (
-                int(width * self._scale),
-                int(height * self._scale)
-            ),
-            self._background_color
-        )
-        """
-        layout_ format: list[
-            tuple[
-                NamedImage,
-                image_size,
-                position,
-                orientation
-            ]
-        ]
-        """
-        total = len(self.layout_)
-        if self._logger:
-            self._logger.info('pasting {0} images into imagecloud'.format(total))
-        
-        for index in range(total):
-            named_image: NamedImage = self.layout_[index][0]
-            size: tuple[int, int] = self.layout_[index][1]
-            position: tuple[int, int] = self.layout_[index][2]
-            orientation: Image.Transpose | None = self.layout_[index][3]
-            new_image = named_image.image
-            name = named_image.name
-
-            if self._logger:
-                self._logger.info('pasting Image[{0}/{1}] {2} into imagecloud'.format(index+1, total, name))
- 
-            new_size = (
-                round(size[0] * self._scale),
-                round(size[1] * self._scale)
-            )
-            # always transpose 1st then resize. size will be in transposed dimensions
-            if orientation != None:
-                if self._logger:
-                    self._logger.info('Transposing Image[{0}/{1}] {2} {3}'.format(
-                        index+1, total, name, orientation.name
-                    ))
-                new_image = new_image.transpose(orientation)
-
-            if new_image.size != new_size:
-                if self._logger:
-                    self._logger.info('Resizing Image[{0}/{1}] {2} ({3},{4}) -> ({5},{6})'.format(
-                        index+1, total, name,
-                        new_image.size[0], new_image.size[1],
-                        new_size[0], new_size[1]
-                    ))
-                new_image = new_image.resize(new_size)
-
-            # transpose image optionally
-           
-
-            pos = (round(position[1] * self._scale),
-                   round(position[0] * self._scale))
-            imagecloud_image.paste(new_image, pos)
-        return self._draw_contour(img=imagecloud_image)
 
     def to_array(self) -> np.ndarray:
         """Convert to numpy array.
@@ -414,38 +372,8 @@ class ImageCloud(object):
         """
         return np.array(self.to_image())
         
-        
-    def _draw_contour(self, img) -> Image.Image:
-        """Draw mask contour on a pillow image."""
-        if self._mask is None or self._contour_width == 0:
-            return img
-
-        mask = self._get_boolean_mask(self._mask) * 255
-        contour = Image.fromarray(mask.astype(np.uint8))
-        contour = contour.resize(img.size)
-        contour = contour.filter(ImageFilter.FIND_EDGES)
-        contour = np.array(contour)
-
-        # make sure borders are not drawn before changing width
-        contour[[0, -1], :] = 0
-        contour[:, [0, -1]] = 0
-
-        # use gaussian to change width, divide by 10 to give more resolution
-        radius = self._contour_width / 10
-        contour = Image.fromarray(contour)
-        contour = contour.filter(ImageFilter.GaussianBlur(radius=radius))
-        contour = np.array(contour) > 0
-        contour = np.dstack((contour, contour, contour))
-
-        # color the contour
-        ret = np.array(img) * np.invert(contour)
-        if self.contour_color != 'black':
-            color = Image.new(img.mode, img.size, self.contour_color)
-            ret += np.array(color) * contour
-
-        return Image.fromarray(ret)
     
-    def _get_boolean_mask(self, mask) -> bool | np.ndarray:
+    def _get_boolean_mask(self, mask: np.ndarray) -> bool | np.ndarray:
         """Cast to two dimensional boolean mask."""
         if mask.dtype.kind == 'f':
             warnings.warn("mask image should be unsigned byte between 0"
@@ -458,4 +386,3 @@ class ImageCloud(object):
         else:
             raise ValueError("Got mask of invalid shape: %s" % str(mask.shape))
         return boolean_mask
-

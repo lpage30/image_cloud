@@ -31,5 +31,9 @@ class ConsoleLogger:
     def debug(self, msg: str) -> None:
         if self._level == LoggerLevel.DEBUG:
             print(msg)
+            
+    @staticmethod
+    def create(verbose: bool):
+        return ConsoleLogger(LoggerLevel.DEBUG if verbose else LoggerLevel.INFO)
 
         

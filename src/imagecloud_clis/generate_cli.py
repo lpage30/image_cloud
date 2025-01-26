@@ -1,10 +1,9 @@
-from imagecloud.console_logger import ConsoleLogger, LoggerLevel
+from imagecloud.console_logger import ConsoleLogger
 import argparse
-import csv
-import os.path
 import sys
+import os
 
-import imagecloud_clis.argument_type_validators as validators
+import imagecloud_clis.cli_helpers as cli_helpers
 from imagecloud.imagecloud_defaults import (
     DEFAULT_IMAGE_FORMAT,
     DEFAULT_CLOUD_SIZE,
@@ -37,8 +36,11 @@ from imagecloud.imagecloud_defaults import (
     MARGIN_HELP,
     MODE_HELP
 )
+from imagecloud.imagecloud_helpers import to_unused_filepath
 from imagecloud.weighted_image import (
-    WeightedImage
+    WeightedImage,
+    WEIGHTED_IMAGES_CSV_FILE_HELP,
+    load_weighted_images,
 )
 from imagecloud.imagecloud_defaults import (
     IMAGE_FORMATS,
@@ -47,28 +49,15 @@ from imagecloud.imagecloud_defaults import (
 from imagecloud.imagecloud import (
     ImageCloud
 )
-
 DEFAULT_SHOW = True
 DEFAULT_VERBOSE = False
-WEIGHT_HEADER = 'weight'
-IMAGE_FILEPATH_HEADER = 'image_filepath'
-CSV_FILE_HELP = '''csv file with following format:
-"{0}","{1}"
-"<full-path-to-image-file-1>",<weight-as-number-1>
-...
-"<full-path-to-image-file-N>",<weight-as-number-N>
 
-'''.format(IMAGE_FILEPATH_HEADER, WEIGHT_HEADER)
-
-    
-def create_logger(verbose: bool) -> ConsoleLogger:
-    return ConsoleLogger(LoggerLevel.DEBUG if verbose else LoggerLevel.INFO)
-
-class ImageCloudArguments:
+class ImageCloudGenerateArguments:
     def __init__ (
         self, 
         input: str,
-        output: str,
+        output_image_filepath: str | None,
+        output_layout_dirpath: str | None,
         output_image_format: str,
         max_image_size: tuple[int, int] | None,
         min_image_size: tuple[int, int],
@@ -87,7 +76,8 @@ class ImageCloudArguments:
         logger: ConsoleLogger | None
     ) -> None:
         self.input = input
-        self.output = output
+        self.output_image_filepath = output_image_filepath
+        self.output_layout_dirpath = output_layout_dirpath
         self.output_image_format = output_image_format
         self.max_image_size = max_image_size
         self.min_image_size = min_image_size
@@ -109,7 +99,7 @@ class ImageCloudArguments:
     def parse(arguments: list[str]):
         parser = argparse.ArgumentParser(
             formatter_class=argparse.RawTextHelpFormatter,
-            prog='imagecloud_cli',
+            prog='generate_imagecloud',
             description='''
             Generate an \'ImageCloud\' from a csv file indicating image filepath and weight for image.
             '''
@@ -118,44 +108,48 @@ class ImageCloudArguments:
             '-i', 
             '--input',
             metavar='<csv_filepath>',
-            type=lambda fp: validators.existing_filepath(parser, fp),
+            type=lambda fp: cli_helpers.existing_filepath(parser, fp),
             required=True,
-            help='Required, {0}'.format(CSV_FILE_HELP)
+            help='Required, {0}'.format(WEIGHTED_IMAGES_CSV_FILE_HELP)
         )
         parser.add_argument(
-            '-o',
-            '--output',
-            metavar='<generated_image_cloud_filepath>',
+            '-output_image_filepath',
+            metavar='<generated_image_cloud_image_filepath>',
             type=str,
-            required=True,
-            help='Required, output file path for generated image cloud'
+            help='Optional, output file path for generated image cloud image'
+        )
+        parser.add_argument(
+            '-output_layout_dirpath',
+            metavar='<generated_image_cloud_layout_directory-path>',
+            type=str,
+            help='Optional, output directory path into which generated image cloud layout will be written'
         )
         parser.add_argument(
             '-output_image_format',
             default=DEFAULT_IMAGE_FORMAT,
             metavar='{0}'.format('|'.join(IMAGE_FORMATS)),
-            type=lambda v: validators.is_one_of_array(parser, v, IMAGE_FORMATS),
+            type=lambda v: cli_helpers.is_one_of_array(parser, v, IMAGE_FORMATS),
             help='Optional,(default %(default)s) {0}'.format(IMAGE_FORMAT_HELP)
         )
         parser.add_argument(
             '-cloud_size',
             default=DEFAULT_CLOUD_SIZE,
             metavar='"<width>,<height>"',
-            type= lambda v: validators.is_tuple_integers(parser, v),
+            type= lambda v: cli_helpers.is_tuple_integers(parser, v),
             help='Optional, (default %(default)s) {0}'.format(CLOUD_SIZE_HELP)
         )
         parser.add_argument(
             '-min_image_size',
             default=DEFAULT_MIN_IMAGE_SIZE,
             metavar='"<width>,<height>"',
-            type=lambda v: validators.is_tuple_integers(parser, v),
+            type=lambda v: cli_helpers.is_tuple_integers(parser, v),
             help='Optional, (default %(default)s) {0}'.format(MIN_IMAGE_SIZE_HELP)
         )
         parser.add_argument(
             '-max_image_size',
             default=DEFAULT_MAX_IMAGE_SIZE,
             metavar='"<width>,<height>"',
-            type=lambda v: validators.is_tuple_integers(parser, v),
+            type=lambda v: cli_helpers.is_tuple_integers(parser, v),
             help='Optional, (default %(default)s) {0}'.format(MAX_IMAGE_SIZE_HELP)
         )
         parser.add_argument(
@@ -168,7 +162,7 @@ class ImageCloudArguments:
             '-contour_width',
             default=DEFAULT_CONTOUR_WIDTH,
             metavar='<float>',
-            type=lambda v: validators.is_float(parser, v),
+            type=lambda v: cli_helpers.is_float(parser, v),
             help='Optional, (default %(default)s) {0}'.format(CONTOUR_WIDTH_HELP)
         )
         parser.add_argument(
@@ -181,14 +175,14 @@ class ImageCloudArguments:
             '-mask',
             metavar='<image_file_path>',
             default=None,
-            type=lambda fp: validators.existing_filepath(parser, fp),
+            type=lambda fp: cli_helpers.existing_filepath(parser, fp),
             help='Optional, (default %(default)s) {0}'.format(MASK_HELP)
         )
         parser.add_argument(
             '-step_size',
             default=DEFAULT_STEP_SIZE,
             metavar='<int',
-            type=lambda v: validators.is_integer(parser, v),
+            type=lambda v: cli_helpers.is_integer(parser, v),
             help='Optional, (default %(default)s) {0}'.format(STEP_SIZE_HELP)
         )
         parser.add_argument(
@@ -207,21 +201,21 @@ class ImageCloudArguments:
             '-prefer_horizontal',
             default=DEFAULT_PREFER_HORIZONTAL,
             metavar='<float>',
-            type=lambda v: validators.is_float(parser, v),
+            type=lambda v: cli_helpers.is_float(parser, v),
             help='Optional, (default %(default)s) {0}'.format(PREFER_HORIZONTAL_HELP)
         )
         parser.add_argument(
             '-margin',
             default=DEFAULT_MARGIN,
             metavar='<number>',
-            type=lambda v: validators.is_integer(parser, v),
+            type=lambda v: cli_helpers.is_integer(parser, v),
             help='Optional, (default %(default)s) {0}'.format(MARGIN_HELP)
         )
         parser.add_argument(
             '-mode',
             default=DEFAULT_MODE,
             metavar='{0}'.format('|'.join(MODE_TYPES)),
-            type=lambda v: validators.is_one_of_array(parser, v, MODE_TYPES),
+            type=lambda v: cli_helpers.is_one_of_array(parser, v, MODE_TYPES),
             help='Optional, (default %(default)s) {0}'.format(MODE_HELP)
         )
         parser.add_argument(
@@ -263,9 +257,10 @@ class ImageCloudArguments:
         parser.set_defaults(verbose=DEFAULT_VERBOSE)
 
         args = parser.parse_args(arguments if 0 < len(arguments) else ['-h'])
-        return ImageCloudArguments(
+        return ImageCloudGenerateArguments(
             input=args.input,
-            output=args.output,
+            output_image_filepath=args.output_image_filepath,
+            output_layout_filepath=args.output_layout_filepath,
             output_image_format=args.output_image_format,
             max_image_size=args.max_image_size,
             min_image_size=args.min_image_size,
@@ -281,34 +276,13 @@ class ImageCloudArguments:
             mode=args.mode,
             repeat=args.repeat,
             show=args.show,
-            logger=create_logger(args.verbose)
+            logger=ConsoleLogger.create(args.verbose)
         )
 
-def load_weighted_images(csv_filepath: str) -> list[WeightedImage]:
-    result: list[WeightedImage] = list()
-    with open(csv_filepath, 'r') as file:    
-        csv_reader = csv.DictReader(file, fieldnames=[IMAGE_FILEPATH_HEADER, WEIGHT_HEADER])
-        next(csv_reader)
-        for row in csv_reader:
-            result.append(WeightedImage.load(float(row[WEIGHT_HEADER]), row[IMAGE_FILEPATH_HEADER]))
-    return result
 
-def to_unused_filepath(filepath: str, new_suffix: str | None = None) -> str:
-    filepath_parts = filepath.split('.')
-    filepath_prefix = '.'.join(filepath_parts[:-1])
-    suffix = new_suffix if new_suffix != None else filepath_parts[-1]
-    result = '{0}.{1}'.format(filepath_prefix, suffix)
-    version: int = 0
-    while os.path.isfile(result):
-        version += 1
-        result = '{0}.{1}.{2}'.format(filepath_prefix, version, suffix)
-    return result
-
-def main(args: ImageCloudArguments | None = None) -> None:
+def generate(args: ImageCloudGenerateArguments | None = None) -> None:
     if args == None:
-        args = ImageCloudArguments.parse(sys.argv[1:])
-    output_filepath = to_unused_filepath(args.output)
-    print('Generating image cloud based on weights and images from {0} into {1}'.format(args.input, output_filepath))
+        args = ImageCloudGenerateArguments.parse(sys.argv[1:])
 
     print('loading {0} ...'.format(args.input))
     weighted_images: list[WeightedImage] = load_weighted_images(args.input)
@@ -333,16 +307,24 @@ def main(args: ImageCloudArguments | None = None) -> None:
     )
     print('generating image cloud from {0} weighted and normalized images'.format(total_images))
 
-    image_cloud.generate(weighted_images)
-    
-    print('saving image cloud to {0} as {1} type'.format(output_filepath, args.output_image_format))
-    collage = image_cloud.to_image()
-    collage.save(output_filepath, args.output_image_format)
-    
-    print('completed! {0}'.format(output_filepath))
+    layout = image_cloud.generate(weighted_images)
+    collage = layout.to_image(logger=args.logger) if args.output_image_filepath != None or args.show else None
+
+    if args.output_image_filepath != None:
+        filepath = to_unused_filepath(args.output_image_filepath)
+        print('saving image cloud to {0} as {1} type'.format(filepath, args.output_image_format))
+        collage.image.save(filepath, args.output_image_format)
+        print('completed! {0}'.format(filepath))
+
+    if args.output_layout_dirpath != None:        
+        filepath = to_unused_filepath(os.path.join(args.output_layout_dirpath, 'imagecloud_layout.csv'))
+        print('saving image cloud Layout to {0}'.format(filepath))
+        layout.write(filepath)
+        print('completed! {0}'.format(filepath))
+
     if args.show:
-        collage.show(output_filepath)
+        collage.image.show()
 
 
 if __name__ == '__main__':
-    main()
+    generate()
