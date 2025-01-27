@@ -13,6 +13,7 @@ from imagecloud.weighted_image import (
     WeightedImage,
     sort_by_weight,
     resize_images_to_proportionally_fit,
+    grow_size_by_step,
     shrink_size_by_step,
     transpose_size,
     remove_transpose_size,
@@ -74,10 +75,6 @@ class ImageCloud(object):
     contour_color: color value (default=helper.DEFAULT_CONTOUR_COLOR)
         Mask contour color.
     
-    repeat : bool, default=helper.DEFAULT_REPEAT
-        Whether to repeat images until max_images or min_image_size
-        is reached.
-    
     prefer_horizontal : float (default=helper.DEFAULT_PREFER_HORIZONTAL)
         The ratio of times to try horizontal fitting as opposed to vertical.
         If prefer_horizontal < 1, the algorithm will try rotating the word
@@ -103,61 +100,113 @@ class ImageCloud(object):
                  scale: float | None = None,
                  contour_width: float | None = None,
                  contour_color: str | None = None,
-                 repeat: bool | None = None,
                  prefer_horizontal: float | None = None,
                  margin: int | None = None,
                  mode: str | None = None,
                  logger: ConsoleLogger | None = None
     ) -> None:
-        self._mask = np.array(mask) if mask != None else None
-        self._size = size if size != None else parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
-        self._background_color = background_color if background_color != None else helper.DEFAULT_BACKGROUND_COLOR
-        self._max_images = max_images if max_images != None else parse_to_int(helper.DEFAULT_MAX_IMAGES)
+        self._mask: np.ndarray | None = np.array(mask) if mask is not None else None
+        self._size = size if size is not None else parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
+        self._background_color = background_color if background_color is not None else helper.DEFAULT_BACKGROUND_COLOR
+        self._max_images = max_images if max_images is not None else parse_to_int(helper.DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
-        self._min_image_size = min_image_size if min_image_size != None else helper.parse_to_tuple(helper.DEFAULT_MIN_IMAGE_SIZE)
-        self._image_step = image_step if image_step != None else parse_to_int(helper.DEFAULT_STEP_SIZE)
-        self._maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio != None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
-        self._scale = scale if scale != None else parse_to_float(helper.DEFAULT_SCALE)
-        self._contour_width = contour_width if contour_width != None else parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
-        self._contour_color = contour_color if contour_color != None else helper.DEFAULT_CONTOUR_COLOR
-        self._repeat = repeat if repeat != None else helper.DEFAULT_REPEAT
+        self._min_image_size = min_image_size if min_image_size is not None else helper.parse_to_tuple(helper.DEFAULT_MIN_IMAGE_SIZE)
+        self._image_step = image_step if image_step is not None else parse_to_int(helper.DEFAULT_STEP_SIZE)
+        self._maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio is not None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
+        self._scale = scale if scale is not None else parse_to_float(helper.DEFAULT_SCALE)
+        self._contour_width = contour_width if contour_width is not None else parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
+        self._contour_color = contour_color if contour_color is not None else helper.DEFAULT_CONTOUR_COLOR
         self._logger = logger
 
-        self._prefer_horizontal = prefer_horizontal if prefer_horizontal != None else parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
-        self._margin = margin if margin != None else parse_to_int(helper.DEFAULT_MARGIN)
-        self._mode = mode if mode != None else helper.DEFAULT_MODE
+        self._prefer_horizontal = prefer_horizontal if prefer_horizontal is not None else parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
+        self._margin = margin if margin is not None else parse_to_int(helper.DEFAULT_MARGIN)
+        self._mode = mode if mode is not None else helper.DEFAULT_MODE
         self._random_state = None
         self.layout_: Layout | None = None
+
+    @property
+    def mask(self) -> np.ndarray | None:
+        return self._mask
+    
+    @mask.setter
+    def mask(self, v: np.ndarray | None) -> None:
+        self._mask = v
+
+    @property
+    def size(self) -> tuple[int, int]:
+        return self._size
+    
+    @size.setter
+    def size(self, v: tuple[int, int]) -> None:
+        self._size = v
+        if self._mask is not None:
+            self._mask = None
+            
+    @property
+    def image_step(self) -> int:
+        return self._image_step
+
+    @property
+    def maintain_aspect_ratio(self) -> bool:
+        return self._maintain_aspect_ratio
+
         
     def generate(self,
                 weighted_images: list[WeightedImage],
-                max_image_size: tuple[int, int] | None = None
-    ) -> Layout: 
-        if self._mask is not None:
-            boolean_mask = self._get_boolean_mask(self._mask)
-            imagecloud_size = (
-                self._mask.shape[0],
-                self._mask.shape[1]
-            )
-        else:
-            boolean_mask = None
-            imagecloud_size = self._size
-
+                max_image_size: tuple[int, int] | None = None,
+                expand_cloud_to_fit_all: bool = False
+    ) -> Layout:
         weighted_images = sort_by_weight(weighted_images, True)[:self._max_images]
-        weighted_images = resize_images_to_proportionally_fit(
-            weighted_images,
-            imagecloud_size,
-            self._maintain_aspect_ratio,
-            self._image_step,
-            self._logger
-        )
-        
-        return self._generate(
-            weighted_images,
-            imagecloud_size,
-            self._random_state if self._random_state != None else Random(),
-            max_image_size
-        )
+        resize_count = 0
+        imagecloud_size = self.size
+        if self._logger:
+            self._logger.info('Generating ImageCloud from {0} images'.format(len(weighted_images)))
+            self._logger.push_indent('generating')
+
+        while True:
+            if self.mask is not None:
+                imagecloud_size = (
+                    self.mask.shape[0],
+                    self.mask.shape[1]
+                )
+
+            proportional_images = resize_images_to_proportionally_fit(
+                weighted_images,
+                imagecloud_size,
+                self.maintain_aspect_ratio,
+                self.image_step,
+                self._logger
+            )
+            
+            result = self._generate(
+                proportional_images,
+                imagecloud_size,
+                self._random_state if self._random_state is not None else Random(),
+                max_image_size
+            )
+            if expand_cloud_to_fit_all and len(result.items) != len(weighted_images):
+                resize_count += 1
+                if self.mask is not None:
+                    raise ValueError('Cannot expand_cloud_to_fit_all when mask is provided.')
+                imagecloud_size = grow_size_by_step(imagecloud_size, self.image_step, self.maintain_aspect_ratio)
+                if self._logger:
+                    self._logger.debug('{0}/{1} images fit. Expanding ImageCloud [{2}] ({3},{4}) -> ({5},{6}) to fit more'.format(
+                        len(result.items),len(weighted_images), resize_count,
+                        self.size[0], self.size[1],
+                        imagecloud_size[0], imagecloud_size[1]
+                    ))
+                    if 1 < resize_count:
+                        self._logger.pop_indent()
+                    self._logger.push_indent('resize-{0}-{1}-more-images'.format(resize_count, len(weighted_images) - len(result.items)))                
+                continue
+            break
+        if self._logger:
+            self._logger = self._logger.copy()
+
+        return result
+
+                    
+            
 
     def _generate(self,
                 proportional_images: list[WeightedImage],
@@ -210,21 +259,6 @@ class ImageCloud(object):
             else:
                 max_image_size = sizes[0]
 
-        if self._repeat and len(proportional_images) < self._max_images:
-            # pad  with repeating images.
-            times_extend = int(np.ceil(self._max_images / len(proportional_images))) - 1
-            # get smallest proportion
-            proportional_images_org = list(proportional_images)
-            smallest_proportion = proportional_images[-1].weight
-            for i in range(times_extend):
-                proportional_images.extend([
-                    WeightedImage(
-                        weighted_image.weight * smallest_proportion ** (i + 1),
-                        weighted_image.image,
-                        weighted_image.name
-                    ) for weighted_image in proportional_images_org
-                ])
-
         # find best location for each image
         total = len(proportional_images)
         orientation: None | Image.Transpose = None
@@ -232,15 +266,19 @@ class ImageCloud(object):
             weight = proportional_images[index].weight
             image = proportional_images[index].image
             name = proportional_images[index].name
+            if self._logger:
+                if 0 < index:
+                    self._logger.pop_indent()
+                self._logger.push_indent('Image-{0}[{1}/{2}]'.format(name, index + 1, total))
             if weight == 0:
                 if self._logger:
-                    self._logger.warning('Dropping Image[{0}/{1}] {2}. 0 weight'.format(
+                    self._logger.warning('Dropping 0 weight'.format(
                         index+1, total, name
                     ))
                 continue
 
             if self._logger:
-                self._logger.info('generating imagecloud: Image[{0}/{1}] {2}...'.format(index+1, total, name))
+                self._logger.info('finding position in ImageCloud')
 
             if random_state.random() < self._prefer_horizontal:
                 orientation = None
@@ -252,27 +290,27 @@ class ImageCloud(object):
             new_image_size = image.size
             while True:
                 sampling_count += 1
-                if self._logger and 0 == sampling_count % 10:
-                    self._logger.debug('Image[{0}/{1}] {2} sampling {3}...'.format(index+1, total, name, sampling_count))
-                    
+                if self._logger:
+                    if 1 < sampling_count:
+                        self._logger.pop_indent()
+                    if 0 == sampling_count % 10:
+                        self._logger.debug('sampling {0}...'.format(sampling_count))
+                    self._logger.push_indent('Sampling {0}'.format(sampling_count))
                 if new_image_size[0] < self._min_image_size[0] or new_image_size[1] < self._min_image_size[1]:
                     # image-size went too small
                     break
 
                 # change size/orientation if sampling_count > 1
                 if new_image_size != prior_image_size and self._logger:
-                        self._logger.debug('Image[{0}/{1}] {2} sampling {3} resize ({4},{5}) -> ({6},{7})'.format(
-                            index+1, total, sampling_count, name,
+                        self._logger.debug('resize ({0},{1}) -> ({2},{3})'.format(
                             image.size[0], image.size[1],
                             new_image_size[0], new_image_size[1]
                         ))
                 
                 # transpose image optionally
-                if orientation != None:
+                if orientation is not None:
                     if self._logger:
-                        self._logger.debug('Image[{0}/{1}] {2} sampling {3} transpose {4}'.format(
-                            index+1, total, name, sampling_count, orientation.name
-                        ))
+                        self._logger.debug('transpose {0}'.format(orientation.name))
                     new_image_size = transpose_size(new_image_size, orientation)
 
                 # find a free position to occupy                
@@ -294,18 +332,18 @@ class ImageCloud(object):
                                    Image.Transpose.ROTATE_90)
                     tried_other_orientation = True
                 else:
-                    if orientation != None:
+                    if orientation is not None:
                         new_image_size = remove_transpose_size(new_image_size, orientation)
                         orientation = None
                     prior_image_size = new_image_size
-                    new_image_size = shrink_size_by_step(new_image_size, self._image_step, self._maintain_aspect_ratio)
+                    new_image_size = shrink_size_by_step(new_image_size, self.image_step, self.maintain_aspect_ratio)
                     
+            if self._logger:
+                self._logger.pop_indent()
 
             if new_image_size[0] < self._min_image_size[0] or new_image_size[1] < self._min_image_size[1]:
                 if self._logger:
-                    self._logger.warning('Dropping Image[{0}/{1}] {2} after {3} samplings. resized too small'.format(
-                        index+1, total, name, sampling_count
-                    ))
+                    self._logger.warning('Dropping Image. resized too small')
                 break
 
             paste_position = (
@@ -320,6 +358,8 @@ class ImageCloud(object):
             
             occupancy.reserve(paste_position, new_image_size, index + 1)
 
+        if self._logger:
+            self._logger.pop_indent()
         items: list[LayoutItem] = list()
         for i in range(len(images)):
             items.append(
@@ -327,7 +367,8 @@ class ImageCloud(object):
                     images[i],
                     image_sizes[i],
                     positions[i],
-                    orientations[i]
+                    orientations[i],
+                    i + 1
                 )
             )
         self.layout_ = Layout(
@@ -337,12 +378,12 @@ class ImageCloud(object):
                 self._background_color,
                 occupancy.occupancy_map
             ),
-            items,
             LayoutContour(
-                self._get_boolean_mask(self._mask) * 255 if self._mask != None else None,
+                self._get_boolean_mask(self._mask) * 255 if self._mask is not None else None,
                 self._contour_width,
                 self._contour_color
-            )
+            ),
+            items
         )
         return self.layout_
 

@@ -29,7 +29,7 @@ class LayoutCanvas:
         self._size = size
         self._mode = mode
         self._background_color = background_color
-        self._occupancy_map: OccupancyMapType = occupancy_map if occupancy_map else np.zeros(size, dtype=OccupancyMapDataType)
+        self._occupancy_map: OccupancyMapType = occupancy_map if occupancy_map is not None else np.zeros(size, dtype=OccupancyMapDataType)
     
     @property
     def name(self) -> str:
@@ -55,7 +55,7 @@ class LayoutCanvas:
         image = Image.new(
             self.mode, (
                 round(self.size[0] * scale),
-                round(self.size[1] * self.scale)
+                round(self.size[1] * scale)
             ),
             self.background_color
         )
@@ -63,11 +63,16 @@ class LayoutCanvas:
     
     def write(self, layout_directory: str) -> Dict[str,Any]:
         occupancy_csv_filepath = to_unused_filepath(os.path.join(layout_directory, 'layout_canvas_occupancy_map.csv'))
-        np.savetxt(occupancy_csv_filepath, self._occupancy_map, ',')
+        np.savetxt(
+            fname=occupancy_csv_filepath,
+            X=self._occupancy_map,
+            fmt='%d',
+            delimiter=','
+        )
         return {
             LAYOUT_CANVAS_NAME: self.name,
             LAYOUT_CANVAS_MODE: self.mode,
-            LAYOUT_CANVAS_BACKGROUND_COLOR: self.background_color if self.background_color != None else '',
+            LAYOUT_CANVAS_BACKGROUND_COLOR: self.background_color if self.background_color is not None else '',
             LAYOUT_CANVAS_SIZE_WIDTH: self.size[0],
             LAYOUT_CANVAS_SIZE_HEIGHT: self.size[1],
             LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH: occupancy_csv_filepath
@@ -86,7 +91,11 @@ class LayoutCanvas:
             (int(row[LAYOUT_CANVAS_SIZE_WIDTH]), int(row[LAYOUT_CANVAS_SIZE_HEIGHT])),
             row[LAYOUT_CANVAS_MODE],
             row[LAYOUT_CANVAS_BACKGROUND_COLOR] if not(is_empty(row[LAYOUT_CANVAS_BACKGROUND_COLOR])) else None,
-            np.loadtxt(row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH], dtype=OccupancyMapDataType) if not(is_empty(row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH])) else None,
+            np.loadtxt(
+                fname=row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH],
+                dtype=OccupancyMapDataType,
+                delimiter=','
+            ) if not(is_empty(row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH])) else None,
             row[LAYOUT_CANVAS_NAME] if not(is_empty(row[LAYOUT_CANVAS_NAME])) else None
         )
 
@@ -147,7 +156,7 @@ class LayoutContour:
 
     def write(self, layout_directory: str) -> Dict[str,Any]:
         mask_filepath = ''
-        if self.mask != None:
+        if self.mask is not None:
             mask_filepath = to_unused_filepath(os.path.join(layout_directory, 'layout_contour_mask.png'))
             Image.fromarray(self.mask).save(mask_filepath)
 
@@ -246,7 +255,7 @@ class LayoutItem:
             LAYOUT_ITEM_SIZE_HEIGHT: self.size[1],
             LAYOUT_ITEM_POSITION_X: self.position[0],
             LAYOUT_ITEM_POSITION_Y: self.position[1],
-            LAYOUT_ITEM_ORIENTATION: self.orientation.name if self.orientation != None else '',
+            LAYOUT_ITEM_ORIENTATION: self.orientation.name if self.orientation is not None else '',
             LAYOUT_ITEM_RESERVATION_NO: self.reservation_no
         }
 
@@ -354,7 +363,7 @@ class Layout:
         
         if canvas == None or contour == None or 0 == len(items):
             return None
-        return Layout(canvas, items, contour)
+        return Layout(canvas, contour, items)
 
 LAYOUT_CANVAS_SIZE_WIDTH = 'layout_canvas_size_width'
 LAYOUT_CANVAS_SIZE_WIDTH_HELP = '<width>'

@@ -40,7 +40,7 @@ def is_tuple_integers(parser: argparse.ArgumentParser, value: str) -> tuple[int,
 def to_unused_filepath(filepath: str, new_suffix: str | None = None) -> str:
     filepath_parts = filepath.split('.')
     filepath_prefix = '.'.join(filepath_parts[:-1])
-    suffix = new_suffix if new_suffix != None else filepath_parts[-1]
+    suffix = new_suffix if new_suffix is not None else filepath_parts[-1]
     result = '{0}.{1}'.format(filepath_prefix, suffix)
     version: int = 0
     while os.path.isfile(result):

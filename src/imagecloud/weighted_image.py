@@ -7,7 +7,7 @@ class NamedImage(object):
     
     def __init__(self, image: Image.Image, name: str | None = None) -> None:
         self._image = image
-        self._name = name if name != None else ''
+        self._name = name if name is not None else ''
     
     @property
     def image(self) -> Image.Image:
@@ -145,6 +145,9 @@ def resize_images_to_proportionally_fit(
     total = len(weighted_images)
     total_weight = sum(weighted_image.weight for weighted_image in weighted_images)
     fit_area = fit_size[0] * fit_size[1]
+    if logger:
+        logger.info('proportionally fitting {0} images to ({1},{2})'.format(total, fit_size[0], fit_size[1]))
+
     for index in range(total):
         weighted_image = weighted_images[index]
         proportion_weight = weighted_image.weight / total_weight
@@ -152,13 +155,17 @@ def resize_images_to_proportionally_fit(
         last_image_size = weighted_image.image.size
         last_distance = calculate_distance(resize_area, calculate_area(last_image_size))
         if logger:
-            logger.info('resizing Image[{0}/{1}] {2} to fit...'.format(index+1, total, weighted_image.name))
-
+            if 0 < index:
+                logger.pop_indent()
+            logger.push_indent('Image-{0}[{1}/{2}]'.format(weighted_image.name, index+1, total, ))
         search_count = 0
+        last_four_distances = [0, 0, 0, 0, 0, 0]
         while True:
             search_count += 1
-            if logger and 0 == search_count % 10:
-                logger.debug('Image[{0}/{1}] {2} finding best fit {3}...'.format(index+1, total, weighted_image.name, search_count))
+            if logger:
+                if 1 < search_count:
+                    logger.pop_indent()
+                logger.push_indent('fit-{0}'.format(search_count))
 
             best_image_size, best_distance = calculate_closest_size_distance(
                 last_image_size,
@@ -166,17 +173,18 @@ def resize_images_to_proportionally_fit(
                 step_size,
                 maintain_aspect_ratio
             )
-            if last_distance < best_distance:
+            if last_distance < best_distance or (last_four_distances[0] == last_distance and last_four_distances[1] == best_distance):
                 break
             else:
+                last_four_distances[(search_count - 1) % 6] = best_distance
                 last_distance = best_distance
                 last_image_size = best_image_size
-
+        if logger:
+            logger.pop_indent()
         new_image = weighted_image.image
         if(weighted_image.image.size != last_image_size):
             if logger:
-                logger.info('Image[{0}/{1}] {2} attempts {3} resize ({4},{5}) -> ({6},{7})'.format(
-                    index+1, total, search_count, weighted_image.name,
+                logger.info('resizing ({0},{1}) -> ({2},{3})'.format(
                     weighted_image.image.size[0], weighted_image.image.size[1],
                     last_image_size[0], last_image_size[1]
                 ))
@@ -187,6 +195,7 @@ def resize_images_to_proportionally_fit(
             new_image,
             weighted_image.name
         ))
+    logger.pop_indent()
     return result
 
 WEIGHTED_IMAGE_WEIGHT = 'weight'

@@ -7,7 +7,6 @@ DEFAULT_MIN_IMAGE_SIZE = '4,4'
 DEFAULT_BACKGROUND_COLOR = None
 DEFAULT_CONTOUR_WIDTH = '0'
 DEFAULT_CONTOUR_COLOR = 'black'
-DEFAULT_REPEAT = False
 DEFAULT_PREFER_HORIZONTAL = '0.9'
 DEFAULT_MARGIN = '1'
 DEFAULT_MODE = 'RGBA'
@@ -66,8 +65,6 @@ BACKGROUND_COLOR_HELP = 'Background color for the image cloud image.'
 CONTOUR_WIDTH_HELP = 'If mask is not None and contour_width > 0, draw the mask contour.'
 
 CONTOUR_COLOR_HELP = 'Mask contour color.'
-
-REPEAT_HELP = 'Whether to repeat images until max_images or min_image_size is reached.'
 
 PREFER_HORIZONTAL_HELP = '''The ratio of times to try horizontal fitting as opposed to vertical.
 If prefer_horizontal < 1, the algorithm will try rotating the image if it doesn't fit. 

@@ -2,6 +2,7 @@ from imagecloud.console_logger import ConsoleLogger
 import argparse
 import sys
 import os
+import numpy as np
 
 import imagecloud_clis.cli_helpers as cli_helpers
 from imagecloud.imagecloud_defaults import (
@@ -15,7 +16,6 @@ from imagecloud.imagecloud_defaults import (
     DEFAULT_MIN_IMAGE_SIZE,
     DEFAULT_MODE,
     DEFAULT_PREFER_HORIZONTAL,
-    DEFAULT_REPEAT,
     DEFAULT_STEP_SIZE,
     DEFAULT_MAINTAIN_ASPECT_RATIO
 )
@@ -30,7 +30,6 @@ from imagecloud.imagecloud_defaults import (
     BACKGROUND_COLOR_HELP,
     CONTOUR_WIDTH_HELP,
     CONTOUR_COLOR_HELP,
-    REPEAT_HELP,
     PREFER_HORIZONTAL_HELP,
     BACKGROUND_COLOR_HELP,
     MARGIN_HELP,
@@ -51,6 +50,7 @@ from imagecloud.imagecloud import (
 )
 DEFAULT_SHOW = True
 DEFAULT_VERBOSE = False
+DEFAULT_EXPAND_CLOUD_TO_FIT_ALL = False
 
 class ImageCloudGenerateArguments:
     def __init__ (
@@ -71,8 +71,8 @@ class ImageCloudGenerateArguments:
         prefer_horizontal: float,
         margin: int,
         mode: str,
-        repeat: bool,
         show: bool,
+        expand_cloud_to_fit_all: bool,
         logger: ConsoleLogger | None
     ) -> None:
         self.input = input
@@ -91,8 +91,8 @@ class ImageCloudGenerateArguments:
         self.prefer_horizontal = prefer_horizontal
         self.margin = margin
         self.mode = mode
-        self.repeat = repeat
         self.show = show
+        self.expand_cloud_to_fit_all = expand_cloud_to_fit_all
         self.logger = logger
     
     @staticmethod
@@ -219,18 +219,6 @@ class ImageCloudGenerateArguments:
             help='Optional, (default %(default)s) {0}'.format(MODE_HELP)
         )
         parser.add_argument(
-            '-repeat',
-            action='store_true',
-            help='Optional, {0}{1}'.format('(default) ' if DEFAULT_REPEAT else '', REPEAT_HELP)
-        )
-        parser.add_argument(
-            '-no-repeat',
-            action='store_false',
-            dest='repeat',
-            help='Optional, {0}{1}'.format('' if DEFAULT_REPEAT else '(default) ', REPEAT_HELP)
-        )
-        parser.set_defaults(repeat=DEFAULT_REPEAT)
-        parser.add_argument(
             '-show',
             action='store_true',
             help='Optional, {0}show resulting image cloud when finished.'.format('(default) ' if DEFAULT_SHOW else '')
@@ -242,6 +230,19 @@ class ImageCloudGenerateArguments:
             help='Optional, {0}do not show resulting image cloud when finished.'.format('' if DEFAULT_SHOW else '(default) ')
         )
         parser.set_defaults(show=DEFAULT_SHOW)
+        
+        parser.add_argument(
+            '-expand_cloud_to_fit_all',
+            action='store_true',
+            help='Optional, {0}Expand cloud_size until all images fit in cloud'.format('(default) ' if DEFAULT_EXPAND_CLOUD_TO_FIT_ALL else '')
+        )
+        parser.add_argument(
+            '-no-expand_cloud_to_fit_all',
+            action='store_false',
+            dest='expand_cloud_to_fit_all',
+            help='Optional, {0}Expand cloud_size until all images fit in cloud'.format('' if DEFAULT_EXPAND_CLOUD_TO_FIT_ALL else '(default) ')
+        )
+        parser.set_defaults(expand_cloud_to_fit_all=DEFAULT_EXPAND_CLOUD_TO_FIT_ALL)
 
         parser.add_argument(
             '-verbose',
@@ -260,7 +261,7 @@ class ImageCloudGenerateArguments:
         return ImageCloudGenerateArguments(
             input=args.input,
             output_image_filepath=args.output_image_filepath,
-            output_layout_filepath=args.output_layout_filepath,
+            output_layout_dirpath=args.output_layout_dirpath,
             output_image_format=args.output_image_format,
             max_image_size=args.max_image_size,
             min_image_size=args.min_image_size,
@@ -274,8 +275,8 @@ class ImageCloudGenerateArguments:
             prefer_horizontal=args.prefer_horizontal,
             margin=args.margin,
             mode=args.mode,
-            repeat=args.repeat,
             show=args.show,
+            expand_cloud_to_fit_all=args.expand_cloud_to_fit_all,
             logger=ConsoleLogger.create(args.verbose)
         )
 
@@ -299,24 +300,30 @@ def generate(args: ImageCloudGenerateArguments | None = None) -> None:
         maintain_aspect_ratio=args.maintain_aspect_ratio,
         contour_width=args.contour_width,
         contour_color=args.contour_color,
-        repeat=args.repeat,
         prefer_horizontal=args.prefer_horizontal,
         margin=args.margin,
         mode=args.mode,
-        logger=args.logger
+        logger=args.logger.copy() if args.logger else None
     )
-    print('generating image cloud from {0} weighted and normalized images'.format(total_images))
+    print('generating image cloud from {0} weighted and normalized images{1}.'.format(
+        total_images,
+        ' iteratively until all images fit in cloud'if args.expand_cloud_to_fit_all else ''
+    ))
 
-    layout = image_cloud.generate(weighted_images)
-    collage = layout.to_image(logger=args.logger) if args.output_image_filepath != None or args.show else None
+    layout = image_cloud.generate(weighted_images, expand_cloud_to_fit_all=args.expand_cloud_to_fit_all)
+    reconstructed_occupancy_map = layout.reconstruct_occupancy_map()
+    if not(np.array_equal(layout.canvas.occupancy_map, reconstructed_occupancy_map)):
+        print('Warning occupancy map from generation not same as reconstructed from images.')
+    
+    collage = layout.to_image(logger=args.logger.copy() if args.logger else None) if args.output_image_filepath is not None or args.show else None
 
-    if args.output_image_filepath != None:
+    if args.output_image_filepath is not None:
         filepath = to_unused_filepath(args.output_image_filepath)
         print('saving image cloud to {0} as {1} type'.format(filepath, args.output_image_format))
         collage.image.save(filepath, args.output_image_format)
         print('completed! {0}'.format(filepath))
 
-    if args.output_layout_dirpath != None:        
+    if args.output_layout_dirpath is not None:        
         filepath = to_unused_filepath(os.path.join(args.output_layout_dirpath, 'imagecloud_layout.csv'))
         print('saving image cloud Layout to {0}'.format(filepath))
         layout.write(filepath)

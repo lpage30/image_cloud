@@ -6,10 +6,17 @@
     "configurations": [
 
         {
-            "name": "imagecloud_clis",
+            "name": "generate_imagecloud",
             "type": "debugpy",
             "request": "launch",
-            "module": "imagecloud_clis.imagecloud_cli",
+            "module": "imagecloud_clis.generate_cli",
+            "args": "${command:pickArgs}"
+        },
+        {
+            "name": "layout_imagecloud",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "imagecloud_clis.layout_cli",
             "args": "${command:pickArgs}"
         }
     ]

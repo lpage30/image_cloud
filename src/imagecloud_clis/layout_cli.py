@@ -90,7 +90,6 @@ class ImageCloudLayoutArguments:
             output_image_filepath=args.output_image_filepath,
             output_image_format=args.output_image_format,
             scale=args.scale,
-            show=args.show,
             logger=ConsoleLogger.create(args.verbose)
         )
 
@@ -104,9 +103,9 @@ def layout(args: ImageCloudLayoutArguments | None = None) -> None:
     print('loaded layout with {0} images'.format(len(layout.items)))
     print('laying-out and showing image cloud layout with {0} scaling.'.format(args.scale))
 
-    collage = layout.to_image(scale=args.scale, logger=args.logger)
+    collage = layout.to_image(scale=args.scale, logger=args.logger.copy() if args.logger else None)
 
-    if args.output_image_filepath != None:
+    if args.output_image_filepath is not None:
         filepath = to_unused_filepath(args.output_image_filepath)
         print('saving image cloud to {0} as {1} type'.format(filepath, args.output_image_format))
         collage.image.save(filepath, args.output_image_format)
