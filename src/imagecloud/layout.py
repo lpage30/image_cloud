@@ -1,5 +1,9 @@
 from imagecloud.console_logger import ConsoleLogger
-from imagecloud.weighted_image import NamedImage
+from imagecloud.weighted_image import (
+    BoxCoordinates,
+    NamedImage,
+    scale_tuple
+)
 from imagecloud.imagecloud_defaults import MODE_TYPES
 from imagecloud.imagecloud_helpers import to_unused_filepath
 from imagecloud.integral_occupancy_map import (
@@ -218,6 +222,18 @@ class LayoutItem:
     def reservation_no(self) -> int:
         return self._reservation_no
     
+    def reservation_box(
+        self, 
+        scale: float = 1.0
+    ) -> tuple[int, int, int, int]:
+        left = round(self.position[0] * scale)
+        upper = round(self.position[1] * scale)
+        right = left + round(self.size[0] * scale)
+        lower = upper - round(self.size[1] * scale)
+        return (
+            round(self.position[0] * scale),
+            round(self.position[0] * scale)
+        )
     def to_image(
         self,
         scale: float = 1.0,
@@ -321,12 +337,10 @@ class Layout:
             if logger:
                 logger.info('pasting Image[{0}/{1}] {2} into imagecloud canvas'.format(i + 1, total, item.original_image.name))            
             image = item.to_image(scale, logger)
+            box = BoxCoordinates(scale_tuple(item.position, scale), scale_tuple(item.size, scale))
             canvas.image.paste(
-                image.image,
-                (
-                    round(item.position[0] * scale),
-                    round(item.position[1] * scale)
-                )
+                im=image.image,
+                box=box.tuple
             )
         return self.contour.to_image(canvas)
 

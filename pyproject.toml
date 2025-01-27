@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=75.8.0"]
+requires = ["setuptools>=75.8.0", "Cython>=3.0.11"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -27,4 +27,9 @@ layout_imagecloud = "imagecloud_clis.layout_cli:layout"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools]
+ext-modules = [
+  {name = "native_integral_occupancy_functions", sources = ["src/imagecloud/native_integral_occupancy_functions.pyx"]}
+]
 

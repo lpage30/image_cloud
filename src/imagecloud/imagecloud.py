@@ -188,7 +188,11 @@ class ImageCloud(object):
                 resize_count += 1
                 if self.mask is not None:
                     raise ValueError('Cannot expand_cloud_to_fit_all when mask is provided.')
-                imagecloud_size = grow_size_by_step(imagecloud_size, self.image_step, self.maintain_aspect_ratio)
+                imagecloud_size = grow_size_by_step(
+                    imagecloud_size, 
+                    max(round(self.size[0] / resize_count), self.image_step), 
+                    self.maintain_aspect_ratio
+                )
                 if self._logger:
                     self._logger.stop_buffering(False)
                     if 1 < resize_count:
@@ -283,15 +287,32 @@ class ImageCloud(object):
 
             if self._logger:
                 self._logger.info('finding position in ImageCloud')
-
-            if random_state.random() < self._prefer_horizontal:
-                orientation = None
-            else:
-                orientation = Image.Transpose.ROTATE_90
-            tried_other_orientation = False
+            
             sampling_count = 0
-            prior_image_size = image.size
             new_image_size = image.size
+            rotate = (self._prefer_horizontal <= random_state.random())
+            # sampling we try image 2 ways until we get a position
+            # sampling 1:
+            #   - randomly choose to rotate or not
+            #   - use image's initial size
+            #   - search for position
+            #   - if found then no more sampling
+            #   - otherwise do next sampling:
+            #        - do sampling i if we didn't rotate
+            #        - do sampling i + 1 if we did rotate
+            # sampling i: 
+            #   - rotate image - no resize
+            #   - search for position
+            #   - if found then no more sampling
+            #   - otherwise do sampling i + 1
+            # sampling i + 1:
+            #   - unrotate image (sampling i had us rotate the size)
+            #   - shrink size by configured step
+            #   - if new image size is too small then no more sampling
+            #   - search for position
+            #   - if found then no more sampling
+            #   - otherwise do sampling i (lets try rotating and searching)
+
             while True:
                 sampling_count += 1
                 if self._logger:
@@ -304,19 +325,17 @@ class ImageCloud(object):
                     # image-size went too small
                     break
 
-                # change size/orientation if sampling_count > 1
-                if new_image_size != prior_image_size and self._logger:
-                        self._logger.debug('resize ({0},{1}) -> ({2},{3})'.format(
-                            image.size[0], image.size[1],
-                            new_image_size[0], new_image_size[1]
-                        ))
-                
-                # transpose image optionally
-                if orientation is not None:
+                if rotate:
+                    orientation = Image.Transpose.ROTATE_90
                     if self._logger:
                         self._logger.debug('transpose {0}'.format(orientation.name))
                     new_image_size = transpose_size(new_image_size, orientation)
-
+                elif 1 < sampling_count and self._logger:
+                    self._logger.debug('resizing ({0},{1}) -> ({2},{3})'.format(
+                        image.size[0], image.size[1],
+                        new_image_size[0], new_image_size[1]
+                    ))
+                
                 # find a free position to occupy                
                 paste_position = occupancy.find_position(
                     (
@@ -328,19 +347,13 @@ class ImageCloud(object):
                 if paste_position is not None:
                     # Found a place
                     break
-
-                # if we didn't find a place, make image smaller
-                # but first try to rotate!
-                if not tried_other_orientation and self._prefer_horizontal < 1:
-                    orientation = (Image.Transpose.ROTATE_90 if orientation is None else
-                                   Image.Transpose.ROTATE_90)
-                    tried_other_orientation = True
-                else:
-                    if orientation is not None:
-                        new_image_size = remove_transpose_size(new_image_size, orientation)
-                        orientation = None
-                    prior_image_size = new_image_size
+                if rotate: # try resizing before rotating again
+                    new_image_size = remove_transpose_size(new_image_size, orientation)
                     new_image_size = shrink_size_by_step(new_image_size, self.image_step, self.maintain_aspect_ratio)
+                    rotate = False
+                    orientation = None
+                else: # try rotating before resizing
+                    rotate = True
                     
             if self._logger:
                 self._logger.pop_indent()

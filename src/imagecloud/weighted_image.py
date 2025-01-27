@@ -65,6 +65,29 @@ def calculate_area(size: tuple[int, int]) -> int:
 def calculate_distance(one: int, two: int) -> int:
     return abs(one - two)
 
+class BoxCoordinates:
+    # see definition of 'box': https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Image.paste
+
+    left: int
+    upper: int
+    right: int
+    lower: int
+    def __init__(self, position: tuple[int, int], size: tuple[int, int]) -> None:
+        self.left = position[0]
+        self.upper = position[1]
+        self.right = self.left + size[0]
+        self.lower = self.upper - size[1]
+    
+    @property
+    def tuple(self) -> tuple[int, int, int, int]:
+        return (self.left, self.upper, self.right, self.lower)
+
+def scale_tuple(twople: tuple[int, int], scale: float) -> tuple[int, int]:
+    return (
+        round(twople[0] * scale),
+        round(twople[1] * scale)
+    )
+
 def transpose_size(size: tuple[int, int], transpose: Image.Transpose) -> tuple[int, int]:
     if transpose in [Image.Transpose.ROTATE_90, Image.Transpose.ROTATE_270]:
         return (size[1], size[0])

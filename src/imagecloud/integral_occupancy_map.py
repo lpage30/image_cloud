@@ -1,4 +1,10 @@
 import numpy as np
+from imagecloud.weighted_image import BoxCoordinates
+from imagecloud.native_integral_occupancy_functions import (
+    find_free_position,
+    reserve_position
+)
+
 
 OccupancyMapDataType = np.uint32
 OccupancyMapType = np.ndarray[OccupancyMapDataType, OccupancyMapDataType]
@@ -10,25 +16,12 @@ class IntegralOccupancyMap(object):
         self.occupancy_map: OccupancyMapType  = np.zeros(map_size, dtype=OccupancyMapDataType)
 
     def find_position(self, size: tuple[int, int], random_state) -> None | tuple[int, int]:
-        
-        scan_width = self.occupancy_map.shape[0]
-        scan_height = self.occupancy_map.shape[1]
-        positions: list[tuple[int, int]] = list()
-    
-        # not efficient; for now
-        for x in range(scan_width):
-            for y in range(scan_height):
-                possible = self.occupancy_map[x:(x + size[0]), y:(y + size[1])]
-                if 0 == np.sum(possible):
-                    positions.append((x,y))
-
-        total_positions = len(positions)
-        return None if 0 == total_positions else positions[random_state.randint(0, total_positions - 1)]
+        return find_free_position(self.occupancy_map, size, random_state)
 
     def reserve(self, pos: tuple[int, int], size: tuple[int, int], reservation_no: int) -> None:
         if reservation_no == 0:
             raise ValueError('reservation_number cannot be zero')
-        self.occupancy_map[pos[0]:(pos[0] + size[0]), pos[1]:(pos[1] + size[1])] = reservation_no
+        reserve_position(self.occupancy_map, pos, size, reservation_no)
     
     @staticmethod
     def create_occupancy_map(map_size: tuple[int, tuple], reservations: list[tuple[tuple[int, int], tuple[int, int]]]) -> OccupancyMapType:
