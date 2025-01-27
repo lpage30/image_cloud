@@ -190,17 +190,21 @@ class ImageCloud(object):
                     raise ValueError('Cannot expand_cloud_to_fit_all when mask is provided.')
                 imagecloud_size = grow_size_by_step(imagecloud_size, self.image_step, self.maintain_aspect_ratio)
                 if self._logger:
-                    self._logger.debug('{0}/{1} images fit. Expanding ImageCloud [{2}] ({3},{4}) -> ({5},{6}) to fit more'.format(
-                        len(result.items),len(weighted_images), resize_count,
-                        self.size[0], self.size[1],
-                        imagecloud_size[0], imagecloud_size[1]
-                    ))
+                    self._logger.stop_buffering(False)
                     if 1 < resize_count:
                         self._logger.pop_indent()
-                    self._logger.push_indent('resize-{0}-{1}-more-images'.format(resize_count, len(weighted_images) - len(result.items)))                
+                    if 0 == (resize_count - 1) % 10:
+                        self._logger.info('{0}/{1} images fit. Expanding ImageCloud [{2}] ({3},{4}) -> ({5},{6}) to fit more ...'.format(
+                            len(result.items),len(weighted_images), resize_count,
+                            self.size[0], self.size[1],
+                            imagecloud_size[0], imagecloud_size[1]
+                        ))
+                    self._logger.push_indent('resize-{0}-{1}-more-images'.format(resize_count, len(weighted_images) - len(result.items)))
+                    self._logger.start_buffering()
                 continue
             break
         if self._logger:
+            self._logger.stop_buffering(True)
             self._logger = self._logger.copy()
 
         return result
@@ -272,7 +276,7 @@ class ImageCloud(object):
                 self._logger.push_indent('Image-{0}[{1}/{2}]'.format(name, index + 1, total))
             if weight == 0:
                 if self._logger:
-                    self._logger.warning('Dropping 0 weight'.format(
+                    self._logger.info('Dropping 0 weight'.format(
                         index+1, total, name
                     ))
                 continue
@@ -343,7 +347,7 @@ class ImageCloud(object):
 
             if new_image_size[0] < self._min_image_size[0] or new_image_size[1] < self._min_image_size[1]:
                 if self._logger:
-                    self._logger.warning('Dropping Image. resized too small')
+                    self._logger.info('Dropping Image. resized too small')
                 break
 
             paste_position = (
