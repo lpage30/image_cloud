@@ -346,8 +346,7 @@ class Layout:
                 )
             except Exception as e:
                 if logger:
-                    e_msg = '\n\t'.join(traceback.format_exception(e))
-                    logger.info('Error pasting {0} into {1}. {2} \n\t{3}'.format(image.name, canvas.name, str(e), e_msg))
+                    logger.info('Error pasting {0} into {1}. {2} \n{3}'.format(image.name, canvas.name, str(e), '\n'.join(traceback.format_exception(e))))
 
         return self.contour.to_image(canvas)
 
