@@ -2,6 +2,7 @@ DEFAULT_IMAGE_FORMAT = 'png'
 DEFAULT_CLOUD_SIZE = '400,200'
 DEFAULT_MAINTAIN_ASPECT_RATIO = True
 DEFAULT_STEP_SIZE = '1'
+DEFAULT_CLOUD_EXPAND_STEP_SIZE = '0'
 DEFAULT_MAX_IMAGE_SIZE = None
 DEFAULT_MIN_IMAGE_SIZE = '4,4'
 DEFAULT_BACKGROUND_COLOR = None
@@ -48,8 +49,13 @@ CLOUD_SIZE_HELP = 'width and height of canvas'
 
 MAINTAIN_ASPECT_RATIO_HELP = '''resize of images to fit will maintain aspect ratio'''
 STEP_SIZE_HELP = '''Step size for the image. 
-image_step> 1 might speed up computation
+ste p> 1 might speed up computation
 but give a worse fit.
+'''
+DEFAULT_CLOUD_EXPAND_STEP_SIZE_HELP = '''Step size for expanding cloud to fit more images
+images will be proportionally fit to the original cloud size but may still not get placed to fit in cloud.
+step > 0 the cloud will expand by this amount in a loop until all images fit into it.
+step > 1 might speed up computation but give a worse fit.
 '''
 
 MAX_IMAGE_SIZE_HELP = '''Maximum image size for the largest image.

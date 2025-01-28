@@ -154,7 +154,7 @@ class ImageCloud(object):
     def generate(self,
                 weighted_images: list[WeightedImage],
                 max_image_size: tuple[int, int] | None = None,
-                expand_cloud_to_fit_all: bool = False
+                cloud_expansion_step_size: int = 0
     ) -> Layout:
         weighted_images = sort_by_weight(weighted_images, True)[:self._max_images]
         resize_count = 0
@@ -163,20 +163,21 @@ class ImageCloud(object):
             self._logger.info('Generating ImageCloud from {0} images'.format(len(weighted_images)))
             self._logger.push_indent('generating')
 
+        proportional_images = resize_images_to_proportionally_fit(
+            weighted_images,
+            imagecloud_size,
+            self.maintain_aspect_ratio,
+            self.image_step,
+            self._margin,
+            self._logger
+        )
+
         while True:
             if self.mask is not None:
                 imagecloud_size = (
                     self.mask.shape[0],
                     self.mask.shape[1]
                 )
-
-            proportional_images = resize_images_to_proportionally_fit(
-                weighted_images,
-                imagecloud_size,
-                self.maintain_aspect_ratio,
-                self.image_step,
-                self._logger
-            )
             
             result = self._generate(
                 proportional_images,
@@ -184,13 +185,13 @@ class ImageCloud(object):
                 self._random_state if self._random_state is not None else Random(),
                 max_image_size
             )
-            if expand_cloud_to_fit_all and len(result.items) != len(weighted_images):
+            if 0 < cloud_expansion_step_size and len(result.items) != len(weighted_images):
                 resize_count += 1
                 if self.mask is not None:
                     raise ValueError('Cannot expand_cloud_to_fit_all when mask is provided.')
                 imagecloud_size = grow_size_by_step(
                     imagecloud_size, 
-                    max(round(self.size[0] / resize_count), self.image_step), 
+                    cloud_expansion_step_size, 
                     self.maintain_aspect_ratio
                 )
                 if self._logger:

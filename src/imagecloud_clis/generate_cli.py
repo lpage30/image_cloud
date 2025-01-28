@@ -17,6 +17,7 @@ from imagecloud.imagecloud_defaults import (
     DEFAULT_MODE,
     DEFAULT_PREFER_HORIZONTAL,
     DEFAULT_STEP_SIZE,
+    DEFAULT_CLOUD_EXPAND_STEP_SIZE,
     DEFAULT_MAINTAIN_ASPECT_RATIO
 )
 from imagecloud.imagecloud_defaults import (
@@ -24,6 +25,7 @@ from imagecloud.imagecloud_defaults import (
     MASK_HELP,
     CLOUD_SIZE_HELP,
     STEP_SIZE_HELP,
+    DEFAULT_CLOUD_EXPAND_STEP_SIZE_HELP,
     MAINTAIN_ASPECT_RATIO_HELP,
     MAX_IMAGE_SIZE_HELP,
     MIN_IMAGE_SIZE_HELP,
@@ -72,7 +74,7 @@ class ImageCloudGenerateArguments:
         margin: int,
         mode: str,
         show: bool,
-        expand_cloud_to_fit_all: bool,
+        cloud_expansion_step_size: int,
         logger: ConsoleLogger | None
     ) -> None:
         self.input = input
@@ -92,7 +94,7 @@ class ImageCloudGenerateArguments:
         self.margin = margin
         self.mode = mode
         self.show = show
-        self.expand_cloud_to_fit_all = expand_cloud_to_fit_all
+        self.cloud_expansion_step_size = cloud_expansion_step_size
         self.logger = logger
     
     @staticmethod
@@ -186,6 +188,14 @@ class ImageCloudGenerateArguments:
             help='Optional, (default %(default)s) {0}'.format(STEP_SIZE_HELP)
         )
         parser.add_argument(
+            '-cloud_expansion_step_size',
+            default=DEFAULT_CLOUD_EXPAND_STEP_SIZE,
+            metavar='<int',
+            type=lambda v: cli_helpers.is_integer(parser, v),
+            help='Optional, (default %(default)s) {0}'.format(DEFAULT_CLOUD_EXPAND_STEP_SIZE_HELP)
+        )
+
+        parser.add_argument(
             '-maintain_aspect_ratio',
             action='store_true',
             help='Optional, {0}{1}'.format('(default) ' if DEFAULT_MAINTAIN_ASPECT_RATIO else '', MAINTAIN_ASPECT_RATIO_HELP)
@@ -276,7 +286,7 @@ class ImageCloudGenerateArguments:
             margin=args.margin,
             mode=args.mode,
             show=args.show,
-            expand_cloud_to_fit_all=args.expand_cloud_to_fit_all,
+            cloud_expansion_step_size=args.cloud_expansion_step_size,
             logger=ConsoleLogger.create(args.verbose)
         )
 
@@ -305,12 +315,12 @@ def generate(args: ImageCloudGenerateArguments | None = None) -> None:
         mode=args.mode,
         logger=args.logger.copy() if args.logger else None
     )
-    print('generating image cloud from {0} weighted and normalized images{1}.'.format(
+    print('generating image cloud from {0} weighted and normalized images.{1}'.format(
         total_images,
-        ' iteratively until all images fit in cloud'if args.expand_cloud_to_fit_all else ''
+        ' Cloud will be expanded iteratively by cloud_expansion_step_size until all images are positioned.' if 0 != args.cloud_expansion_step_size else ''
     ))
 
-    layout = image_cloud.generate(weighted_images, expand_cloud_to_fit_all=args.expand_cloud_to_fit_all)
+    layout = image_cloud.generate(weighted_images, cloud_expansion_step_size=args.cloud_expansion_step_size)
     reconstructed_occupancy_map = layout.reconstruct_occupancy_map()
     if not(np.array_equal(layout.canvas.occupancy_map, reconstructed_occupancy_map)):
         print('Warning occupancy map from generation not same as reconstructed from images.')

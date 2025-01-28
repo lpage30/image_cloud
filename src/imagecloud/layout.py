@@ -16,6 +16,7 @@ import os
 from PIL import Image, ImageFilter
 from typing import Any, Dict
 import csv
+import traceback
 
 def is_empty(value: str | None) -> bool:
     return value in ['', None]
@@ -338,10 +339,15 @@ class Layout:
                 logger.info('pasting Image[{0}/{1}] {2} into imagecloud canvas'.format(i + 1, total, item.original_image.name))            
             image = item.to_image(scale, logger)
             box = BoxCoordinates(scale_tuple(item.position, scale), scale_tuple(item.size, scale))
-            canvas.image.paste(
-                im=image.image,
-                box=box.tuple
-            )
+            try:
+                canvas.image.paste(
+                    im=image.image,
+                    box=box.tuple
+                )
+            except Exception as e:
+                if logger:
+                    logger.info('Error pasting {0} into {1}. {2}'.format(image.name, canvas.name, traceback.format_exception(e)))
+
         return self.contour.to_image(canvas)
 
     def write(self, csv_filepath: str) -> None:

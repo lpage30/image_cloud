@@ -105,9 +105,10 @@ def _change_size_by_step(
     grow: bool # grow == grow=True, shrink == grow=False
 ) -> tuple[int, int]:
     if maintain_aspect_ratio:
+        percent_change = step_size / size[0]
         step_change =  (
-            round((step_size / size[0]) * size[0]),
-            round((step_size / size[1]) * size[1])
+            round(percent_change * size[0]),
+            round(percent_change * size[1])
         )
     else:
         step_change = (
@@ -157,6 +158,7 @@ def resize_images_to_proportionally_fit(
     fit_size: tuple[int, int],
     maintain_aspect_ratio: bool,
     step_size: int,
+    margin: int,
     logger: ConsoleLogger | None = None
 ) -> list[WeightedImage]:
     """
@@ -175,7 +177,7 @@ def resize_images_to_proportionally_fit(
         weighted_image = weighted_images[index]
         proportion_weight = weighted_image.weight / total_weight
         resize_area = round(proportion_weight * fit_area)
-        last_image_size = weighted_image.image.size
+        last_image_size = (weighted_image.image.size[0] + margin, weighted_image.image.size[1] + margin)
         last_distance = calculate_distance(resize_area, calculate_area(last_image_size))
         if logger:
             if 0 < index:
@@ -205,13 +207,14 @@ def resize_images_to_proportionally_fit(
         if logger:
             logger.pop_indent()
         new_image = weighted_image.image
-        if(weighted_image.image.size != last_image_size):
+        new_image_size = (last_image_size[0] - margin, last_image_size[1] - margin)
+        if(weighted_image.image.size != new_image_size):
             if logger:
                 logger.info('resizing ({0},{1}) -> ({2},{3})'.format(
                     weighted_image.image.size[0], weighted_image.image.size[1],
-                    last_image_size[0], last_image_size[1]
+                    new_image_size[0], new_image_size[1]
                 ))
-            new_image = weighted_image.image.resize(last_image_size)
+            new_image = weighted_image.image.resize(new_image_size)
 
         result.append(WeightedImage(
             proportion_weight,

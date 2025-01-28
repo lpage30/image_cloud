@@ -1,9 +1,8 @@
+# cython: language_level=3
 # cython: boundscheck=False
 # cython: wraparound=False
-import array
-import numpy as np
+from cpython cimport array 
 
-# copied from https://github.com/amueller/word_cloud/blob/main/wordcloud/query_integral_image.pyx
 cdef struct BoxCoordinates:
     int left
     int upper
@@ -18,56 +17,47 @@ def to_box(int left, int upper, int width, int height):
     r.lower = upper - height
     return r
 
-def is_box_too_big(unsigned int[:,:] occupancy_map, BoxCoordinates box):
-    return occupancy_map.shape[0] <= box.right or box.lower < 0
+def is_size_too_wide(unsigned int[:,:] occupancy_map, int position_x, int width):
+    return occupancy_map.shape[0] <= (position_x + width)
+
+def is_size_too_tall(unsigned int[:,:] occupancy_map, int position_y, int height):
+    return (position_y - height) < 0
 
 def is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box):
     cdef total = 0
     for x in range(box.left, box.right):
         for y in range(box.lower, box.upper):
-          total += occupancy_map[x, y]
-          if 0 < total:
+          if occupancy_map[x, y] != 0:
             return False
     return True
 
 
-def find_free_position(unsigned int[:,:] occupancy_map, int[:] size, random_state):
+def find_free_position(unsigned int[:,:] occupancy_map, int size_width, int size_height, random_state):
 
     cdef int scan_width = occupancy_map.shape[0]
     cdef int scan_height = occupancy_map.shape[1]
     cdef BoxCoordinates box = to_box(0,1,2,3)
-    cdef int position_count = 0
+    cdef array.array positions = array.array('i', [])
     cdef int chosen_position = 0
-    cdef bint box_too_big = False
-
+    
     # box positions are '(left,upper) so we need to go from (top-left) to (bottom-right) in occupancy map
     for left in range(scan_width):
-        box_too_big = False
-        for upper in range(scan_height, 0, -1):
-            box = to_box(left, upper, size[0], size[1])
-            box_too_big = is_box_too_big(occupancy_map, box)
-            if box_too_big:
-                break
-            if is_free_position(occupancy_map, box):
-                position_count += 1
-        if box_too_big:
+        if is_size_too_wide(occupancy_map, left, size_width):
             break
+        for upper in range(scan_height, 0, -1):
+            if is_size_too_tall(occupancy_map, upper, size_height):
+                break
+            if is_free_position(occupancy_map, to_box(left, upper, size_width, size_height)):
+                positions.extend([left, upper])
 
-    if 0 == position_count:
+    if 0 == len(positions):
         return None
 
-    chosen_position = random_state.randint(1, position_count)
-    position_count = 0
-    for left in range(scan_width):
-        for upper in range(scan_height, 0, -1):
-            box = to_box(left, upper, size[0], size[1])
-            if is_free_position(occupancy_map, box):
-                position_count += 1
-                if chosen_position == position_count:
-                    return left, upper
+    chosen_position = random_state.randint(0, int(len(positions)/2) - 1 ) * 2
+    return positions[chosen_position], positions[chosen_position + 1]
 
-def reserve_position(unsigned int[:,:] occupancy_map, int[:] position, int[:] size, int reservation_no):
-    cdef BoxCoordinates box = to_box(position[0], position[1], size[0], size[1])
+def reserve_position(unsigned int[:,:] occupancy_map, int position_x, int position_y, int size_width, int size_height, int reservation_no):
+    cdef BoxCoordinates box = to_box(position_x, position_y, size_width, size_height)
 
     for x in range(box.left, box.right):
         for y in range(box.lower, box.upper):
