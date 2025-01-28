@@ -1,7 +1,3 @@
-[!WARNING]
-
-This Package is PURELY experimental and untested. This warning will be removed once this testing has been completed
-
 # ImageCloud
 
 This tool is used to construct image clouds from a CSV of weights and image source filepaths.
@@ -10,9 +6,10 @@ The idea is similar to a word cloud except with images being scaled instead of w
 ## Build/Install
 
 The following bash scripts may be used to clean/build/install (edit locally) this package
-- `clean.sh`  deletes all side-effect files from `build.sh`
-- `build.sh`  calls `clean.sh` and compiles cython and python code into installable packages
-- `local-install.sh`  calls `build.sh` and does `pip install -e` of package 
+- `clean`  deletes all side-effect files from `build`
+- `build`  calls `clean` and compiles cython and python code into installable packages
+- `install`  calls `build` and does `pip install` of package 
+- `uninstall`  does `pip uninstall` of package and then `clean`
 
 
 
@@ -23,11 +20,14 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 ```
 usage: generate_imagecloud [-h] -i <csv_filepath> [-output_image_filepath <generated_image_cloud_image_filepath>]
                            [-output_layout_dirpath <generated_image_cloud_layout_directory-path>]
-                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-cloud_size "<width>,<height>"]
-                           [-min_image_size "<width>,<height>"] [-max_image_size "<width>,<height>"] [-background_color <color-name>] [-contour_width <float>]
-                           [-contour_color <color-name>] [-mask <image_file_path>] [-step_size <int] [-maintain_aspect_ratio] [-no-maintain_aspect_ratio]
-                           [-prefer_horizontal <float>] [-margin <number>] [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N]
-                           [-show] [-no-show] [-expand_cloud_to_fit_all] [-no-expand_cloud_to_fit_all] [-verbose] [-no-verbose]
+                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                           [-cloud_size "<width>,<height>"] [-min_image_size "<width>,<height>"]
+                           [-max_image_size "<width>,<height>"] [-background_color <color-name>] [-contour_width <float>]
+                           [-contour_color <color-name>] [-mask <image_file_path>] [-step_size <int>]
+                           [-cloud_expansion_step_size <int>] [-maintain_aspect_ratio] [-no-maintain_aspect_ratio]
+                           [-prefer_horizontal <float>] [-margin <number>]
+                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [-show]
+                           [-no-show] [-verbose] [-no-verbose]
 
             Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
             
@@ -68,9 +68,14 @@ options:
                         and the shape of mask will be used instead. 
                         All white (#FF or #FFFFFF) entries will be considered "masked out"
                         while other entries will be free to draw on.
-  -step_size <int       Optional, (default 1) Step size for the image. 
-                        image_step> 1 might speed up computation
+  -step_size <int>      Optional, (default 1) Step size for the image. 
+                        ste p> 1 might speed up computation
                         but give a worse fit.
+  -cloud_expansion_step_size <int>
+                        Optional, (default 0) Step size for expanding cloud to fit more images
+                        images will be proportionally fit to the original cloud size but may still not get placed to fit in cloud.
+                        step > 0 the cloud will expand by this amount in a loop until all images fit into it.
+                        step > 1 might speed up computation but give a worse fit.
   -maintain_aspect_ratio
                         Optional, (default) resize of images to fit will maintain aspect ratio
   -no-maintain_aspect_ratio
@@ -83,10 +88,6 @@ options:
                         Optional, (default RGBA) Transparent background will be generated when mode is "RGBA" and background_color is None.
   -show                 Optional, (default) show resulting image cloud when finished.
   -no-show              Optional, do not show resulting image cloud when finished.
-  -expand_cloud_to_fit_all
-                        Optional, Expand cloud_size until all images fit in cloud
-  -no-expand_cloud_to_fit_all
-                        Optional, (default) Expand cloud_size until all images fit in cloud
   -verbose              Optional, report progress as constructing cloud
   -no-verbose           Optional, (default) report progress as constructing cloud
 ```
@@ -98,9 +99,10 @@ csv file for weighted images with following format:
 ```
 ### layout_imagecloud
 ```
-usage: layout_imagecloud [-h] -i <csv_filepath> [-scale <float>] [-output_image_filepath <layedout_image_cloud_image_filepath>]
-                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-verbose]
-                         [-no-verbose]
+usage: layout_imagecloud [-h] -i <csv_filepath> [-scale <float>]
+                         [-output_image_filepath <layedout_image_cloud_image_filepath>]
+                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                         [-verbose] [-no-verbose]
 
             Layout and show a generated 'ImageCloud' from its layout csv file
             
@@ -117,7 +119,7 @@ options:
   -output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
                         Optional,(default png) image format: [blp,bmp,dds,dib,eps,gif,icns,ico,im,jpeg,mpo,msp,pcx,pfm,png,ppm,sgi,webp,xbm]
   -verbose              Optional, report progress as constructing cloud
-  -no-verbose           Optional, (default) report progress as constructing cloud
+  -no-verbose           Optional, (default) report progress as constructing cloudd
   ```
 #### CSV to import
 csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:

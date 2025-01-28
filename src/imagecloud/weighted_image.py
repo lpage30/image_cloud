@@ -76,7 +76,7 @@ class BoxCoordinates:
         self.left = position[0]
         self.upper = position[1]
         self.right = self.left + size[0]
-        self.lower = self.upper - size[1]
+        self.lower = self.upper + size[1]
     
     @property
     def tuple(self) -> tuple[int, int, int, int]:

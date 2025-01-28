@@ -17,7 +17,6 @@ from imagecloud.imagecloud_defaults import (
     DEFAULT_MODE,
     DEFAULT_PREFER_HORIZONTAL,
     DEFAULT_STEP_SIZE,
-    DEFAULT_CLOUD_EXPAND_STEP_SIZE,
     DEFAULT_MAINTAIN_ASPECT_RATIO
 )
 from imagecloud.imagecloud_defaults import (
@@ -25,7 +24,6 @@ from imagecloud.imagecloud_defaults import (
     MASK_HELP,
     CLOUD_SIZE_HELP,
     STEP_SIZE_HELP,
-    DEFAULT_CLOUD_EXPAND_STEP_SIZE_HELP,
     MAINTAIN_ASPECT_RATIO_HELP,
     MAX_IMAGE_SIZE_HELP,
     MIN_IMAGE_SIZE_HELP,
@@ -52,7 +50,12 @@ from imagecloud.imagecloud import (
 )
 DEFAULT_SHOW = True
 DEFAULT_VERBOSE = False
-DEFAULT_EXPAND_CLOUD_TO_FIT_ALL = False
+DEFAULT_CLOUD_EXPAND_STEP_SIZE = '0'
+DEFAULT_CLOUD_EXPAND_STEP_SIZE_HELP = '''Step size for expanding cloud to fit more images
+images will be proportionally fit to the original cloud size but may still not get placed to fit in cloud.
+step > 0 the cloud will expand by this amount in a loop until all images fit into it.
+step > 1 might speed up computation but give a worse fit.
+'''
 
 class ImageCloudGenerateArguments:
     def __init__ (
@@ -183,14 +186,14 @@ class ImageCloudGenerateArguments:
         parser.add_argument(
             '-step_size',
             default=DEFAULT_STEP_SIZE,
-            metavar='<int',
+            metavar='<int>',
             type=lambda v: cli_helpers.is_integer(parser, v),
             help='Optional, (default %(default)s) {0}'.format(STEP_SIZE_HELP)
         )
         parser.add_argument(
             '-cloud_expansion_step_size',
             default=DEFAULT_CLOUD_EXPAND_STEP_SIZE,
-            metavar='<int',
+            metavar='<int>',
             type=lambda v: cli_helpers.is_integer(parser, v),
             help='Optional, (default %(default)s) {0}'.format(DEFAULT_CLOUD_EXPAND_STEP_SIZE_HELP)
         )
@@ -241,19 +244,6 @@ class ImageCloudGenerateArguments:
         )
         parser.set_defaults(show=DEFAULT_SHOW)
         
-        parser.add_argument(
-            '-expand_cloud_to_fit_all',
-            action='store_true',
-            help='Optional, {0}Expand cloud_size until all images fit in cloud'.format('(default) ' if DEFAULT_EXPAND_CLOUD_TO_FIT_ALL else '')
-        )
-        parser.add_argument(
-            '-no-expand_cloud_to_fit_all',
-            action='store_false',
-            dest='expand_cloud_to_fit_all',
-            help='Optional, {0}Expand cloud_size until all images fit in cloud'.format('' if DEFAULT_EXPAND_CLOUD_TO_FIT_ALL else '(default) ')
-        )
-        parser.set_defaults(expand_cloud_to_fit_all=DEFAULT_EXPAND_CLOUD_TO_FIT_ALL)
-
         parser.add_argument(
             '-verbose',
             action='store_true',
