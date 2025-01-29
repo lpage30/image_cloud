@@ -1,8 +1,6 @@
 from imagecloud.console_logger import ConsoleLogger
-from imagecloud.weighted_image import (
-    BoxCoordinates,
-    NamedImage
-)
+from imagecloud.weighted_image import NamedImage
+from imagecloud.position_box_size import (Size, Position, BoxCoordinates)
 from imagecloud.imagecloud_defaults import MODE_TYPES
 from imagecloud.imagecloud_helpers import to_unused_filepath
 from imagecloud.integral_occupancy_map import (
@@ -46,7 +44,7 @@ def to_existing_filepath(original_filepath: str, possible_dirnames: list[str] | 
 class LayoutCanvas:
     def __init__(
         self,
-        size: tuple[int, int],
+        size: Size,
         mode: str,
         background_color: str | None,
         occupancy_map: OccupancyMapType | None,
@@ -65,7 +63,7 @@ class LayoutCanvas:
         return self._name
     
     @property
-    def size(self) -> tuple[int, int]:
+    def size(self) -> Size:
         return self._size
 
     @property
@@ -86,10 +84,8 @@ class LayoutCanvas:
     
     def to_image(self, scale: float = 1.0) -> NamedImage:
         image = Image.new(
-            self.mode, (
-                round(self.size[0] * scale),
-                round(self.size[1] * scale)
-            ),
+            self.mode, 
+            self.size.scale(scale).tuple,
             self.background_color
         )
         return NamedImage(image, self.name)
@@ -119,8 +115,8 @@ class LayoutCanvas:
             LAYOUT_CANVAS_NAME: self.name,
             LAYOUT_CANVAS_MODE: self.mode,
             LAYOUT_CANVAS_BACKGROUND_COLOR: self.background_color if self.background_color is not None else '',
-            LAYOUT_CANVAS_SIZE_WIDTH: self.size[0],
-            LAYOUT_CANVAS_SIZE_HEIGHT: self.size[1],
+            LAYOUT_CANVAS_SIZE_WIDTH: self.size.width,
+            LAYOUT_CANVAS_SIZE_HEIGHT: self.size.height,
             LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH: occupancy_csv_filepath
         }
 
@@ -134,7 +130,7 @@ class LayoutCanvas:
             return None
         
         return LayoutCanvas(
-            (int(row[LAYOUT_CANVAS_SIZE_WIDTH]), int(row[LAYOUT_CANVAS_SIZE_HEIGHT])),
+            Size((int(row[LAYOUT_CANVAS_SIZE_WIDTH]), int(row[LAYOUT_CANVAS_SIZE_HEIGHT]))),
             row[LAYOUT_CANVAS_MODE],
             row[LAYOUT_CANVAS_BACKGROUND_COLOR] if not(is_empty(row[LAYOUT_CANVAS_BACKGROUND_COLOR])) else None,
             np.loadtxt(
@@ -233,8 +229,8 @@ class LayoutItem:
     def __init__(
         self,
         original_image: NamedImage,
-        size: tuple[int, int],
-        position: tuple[int, int],
+        size: Size,
+        position: Position,
         orientation: Image.Transpose | None,
         reservation_no: int
     ) -> None:
@@ -254,11 +250,11 @@ class LayoutItem:
         return self._original_image
     
     @property
-    def size(self) -> tuple[int, int]:
+    def size(self) -> Size:
         return self._size
     
     @property
-    def position(self) -> tuple[int, int]:
+    def position(self) -> Position:
         return self._position
     
     @property
@@ -282,8 +278,8 @@ class LayoutItem:
         scale: float = 1.0
     ) -> BoxCoordinates:
         return BoxCoordinates(
-            (round(self.position[0] * scale), round(self.position[1] * scale)),
-            (round(self.size[0] * scale), round(self.size[1] * scale))
+            self.position.scale(scale),
+            self.size.scale(scale)
         )
 
     def to_image(
@@ -298,18 +294,15 @@ class LayoutItem:
                 logger.info('Transposing {0} {1}'.format(self.original_image.name, self.orientation.name))
             new_image = new_image.transpose(self.orientation)
         
-        new_size = (
-            round(self.size[0] * scale),
-            round(self.size[1] * scale)
-        )
-        if new_image.size != new_size:
+        new_size = self.size.scale(scale)
+        if new_image.size != new_size.tuple:
             if logger:
-                logger.info('Resizing {0} ({1},{2}) -> ({3},{4})'.format(
+                logger.info('Resizing {0} ({1},{2}) -> {3}'.format(
                     self.original_image.name,
                     new_image.size[0], new_image.size[1],
-                    new_size[0], new_size[1]
+                    str(new_size)
                 ))
-            new_image = new_image.resize(new_size)
+            new_image = new_image.resize(new_size.tuple)
 
         return NamedImage(new_image, self.original_image.name)
 
@@ -325,10 +318,10 @@ class LayoutItem:
         
         return {
             LAYOUT_ITEM_IMAGE_FILEPATH: image_filepath,
-            LAYOUT_ITEM_SIZE_WIDTH: self.size[0],
-            LAYOUT_ITEM_SIZE_HEIGHT: self.size[1],
-            LAYOUT_ITEM_POSITION_X: self.position[0],
-            LAYOUT_ITEM_POSITION_Y: self.position[1],
+            LAYOUT_ITEM_SIZE_WIDTH: self.size.width,
+            LAYOUT_ITEM_SIZE_HEIGHT: self.size.height,
+            LAYOUT_ITEM_POSITION_X: self.position.left,
+            LAYOUT_ITEM_POSITION_Y: self.position.upper,
             LAYOUT_ITEM_ORIENTATION: self.orientation.name if self.orientation is not None else '',
             LAYOUT_ITEM_RESERVATION_NO: self.reservation_no
         }
@@ -344,8 +337,8 @@ class LayoutItem:
 
         return LayoutItem(
             NamedImage.load(to_existing_filepath(row[LAYOUT_ITEM_IMAGE_FILEPATH], layout_directory)),
-            (int(row[LAYOUT_ITEM_SIZE_WIDTH]), int(row[LAYOUT_ITEM_SIZE_HEIGHT])),
-            (int(row[LAYOUT_ITEM_POSITION_X]), int(row[LAYOUT_ITEM_POSITION_Y])),
+            Size((int(row[LAYOUT_ITEM_SIZE_WIDTH]), int(row[LAYOUT_ITEM_SIZE_HEIGHT]))),
+            Position((int(row[LAYOUT_ITEM_POSITION_X]), int(row[LAYOUT_ITEM_POSITION_Y]))),
             Image.Transpose[row[LAYOUT_ITEM_ORIENTATION]] if not(is_empty(row[LAYOUT_ITEM_ORIENTATION])) else None,
             int(row[LAYOUT_ITEM_RESERVATION_NO]) if not(is_empty(row[LAYOUT_ITEM_RESERVATION_NO])) else row_no
         )
@@ -378,7 +371,7 @@ class Layout:
     def reconstruct_occupancy_map(self) -> OccupancyMapType:
         return IntegralOccupancyMap.create_occupancy_map(
             self.canvas.size,
-            [(item.position, item.size) for item in self.items]
+            [item.reservation_box() for item in self.items]
         )
     
     def to_image(

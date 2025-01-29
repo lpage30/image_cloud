@@ -1,9 +1,10 @@
 import argparse
+from imagecloud.position_box_size import Size
 from imagecloud.imagecloud_helpers import (
     parse_to_existing_filepath,
     parse_to_int,
     parse_to_float,
-    parse_to_tuple,
+    parse_to_size,
 )
 
 
@@ -31,9 +32,9 @@ def is_float(parser: argparse.ArgumentParser, value: str) -> float:
     except Exception as e:
         parser.error(str(e))
 
-def is_tuple_integers(parser: argparse.ArgumentParser, value: str) -> tuple[int,int]:
+def is_size(parser: argparse.ArgumentParser, value: str) -> Size:
     try:
-        return parse_to_tuple(value)
+        return parse_to_size(value)
     except Exception as e:
         parser.error(str(e))
         

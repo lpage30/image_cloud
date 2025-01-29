@@ -2,6 +2,9 @@ from imagecloud.console_logger import ConsoleLogger
 import os
 import csv
 from PIL import Image
+from imagecloud.position_box_size import (
+    Size
+)
 
 class NamedImage(object):
     
@@ -59,93 +62,37 @@ def sort_by_weight(
 ) -> list[WeightedImage]:
     return sorted(weighted_images, key=lambda i: i.weight, reverse=reverse)
 
-def calculate_area(size: tuple[int, int]) -> int:
-    return round(size[0] * size[1])
 
 def calculate_distance(one: int, two: int) -> int:
     return abs(one - two)
 
-class BoxCoordinates:
-    # see definition of 'box': https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.Image.paste
-
-    left: int
-    upper: int
-    right: int
-    lower: int
-    def __init__(self, position: tuple[int, int], size: tuple[int, int]) -> None:
-        self.left = position[0]
-        self.upper = position[1]
-        self.right = self.left + size[0]
-        self.lower = self.upper + size[1]
-    
-    @property
-    def tuple(self) -> tuple[int, int, int, int]:
-        return (self.left, self.upper, self.right, self.lower)
-
-def scale_tuple(twople: tuple[int, int], scale: float) -> tuple[int, int]:
-    return (
-        round(twople[0] * scale),
-        round(twople[1] * scale)
-    )
-
-def transpose_size(size: tuple[int, int], transpose: Image.Transpose) -> tuple[int, int]:
-    if transpose in [Image.Transpose.ROTATE_90, Image.Transpose.ROTATE_270]:
-        return (size[1], size[0])
-    return size
-
-def remove_transpose_size(size: tuple[int, int], transpose_to_remove: Image.Transpose) -> tuple[int, int]:
-    if transpose_to_remove in [Image.Transpose.ROTATE_90, Image.Transpose.ROTATE_270]:
-        return (size[1], size[0])
-    return size
-
-def _change_size_by_step(
-    size: tuple[int, int],
-    step_size: int,
-    maintain_aspect_ratio: bool,
-    grow: bool # grow == grow=True, shrink == grow=False
-) -> tuple[int, int]:
-    if maintain_aspect_ratio:
-        percent_change = step_size / size[0]
-        step_change =  (
-            round(percent_change * size[0]),
-            round(percent_change * size[1])
-        )
-    else:
-        step_change = (
-            step_size,
-            step_size
-        )
-    if grow:
-        return ((size[0] + step_change[0]), (size[1] + step_change[1]))
-    else:
-        return ((size[0] - step_change[0]), (size[1] - step_change[1]))
 
 def grow_size_by_step(
-    size: tuple[int, int],
+    size: Size,
     step_size: int,
     maintain_aspect_ratio: bool
-) -> tuple[int, int]:
-    return _change_size_by_step(size, step_size, maintain_aspect_ratio, True)
+) -> Size:
+    return size.adjust(step_size, maintain_aspect_ratio)
 
 def shrink_size_by_step(
-    size: tuple[int, int],
+    size: Size,
     step_size: int,
     maintain_aspect_ratio: bool
-) -> tuple[int, int]:
-    return _change_size_by_step(size, step_size, maintain_aspect_ratio, False)
+) -> Size:
+    return size.adjust(-step_size, maintain_aspect_ratio)
 
 def calculate_closest_size_distance(
-    size: tuple[int, int],
+    size: Size,
     target_area: int,
     step_size: int,
     maintain_aspect_ratio: bool,
-) -> tuple[tuple[int, int], int]:
+) -> tuple[Size, int]:
     
     grown_size = grow_size_by_step(size, step_size, maintain_aspect_ratio)
     shrink_size = shrink_size_by_step(size, step_size, maintain_aspect_ratio)
 
-    grown_distance = calculate_distance(target_area, calculate_area(grown_size))
-    shrink_distance = calculate_distance(target_area, calculate_area(shrink_size))
+    grown_distance = calculate_distance(target_area, grown_size.area)
+    shrink_distance = calculate_distance(target_area, shrink_size.area)
     
     if grown_distance <= shrink_distance:
         return (grown_size, grown_distance)
@@ -155,7 +102,7 @@ def calculate_closest_size_distance(
 
 def resize_images_to_proportionally_fit(
     weighted_images: list[WeightedImage],
-    fit_size: tuple[int, int],
+    fit_size: Size,
     maintain_aspect_ratio: bool,
     step_size: int,
     margin: int,
@@ -169,16 +116,16 @@ def resize_images_to_proportionally_fit(
     result: list[WeightedImage] = list()
     total = len(weighted_images)
     total_weight = sum(weighted_image.weight for weighted_image in weighted_images)
-    fit_area = fit_size[0] * fit_size[1]
+    fit_area = fit_size.area
     if logger:
-        logger.info('proportionally fitting {0} images to ({1},{2})'.format(total, fit_size[0], fit_size[1]))
+        logger.info('proportionally fitting {0} images to {1}'.format(total, str(fit_size)))
 
     for index in range(total):
         weighted_image = weighted_images[index]
         proportion_weight = weighted_image.weight / total_weight
         resize_area = round(proportion_weight * fit_area)
-        last_image_size = (weighted_image.image.size[0] + margin, weighted_image.image.size[1] + margin)
-        last_distance = calculate_distance(resize_area, calculate_area(last_image_size))
+        last_image_size = Size((weighted_image.image.size[0] + margin, weighted_image.image.size[1] + margin))
+        last_distance = calculate_distance(resize_area, last_image_size.area)
         if logger:
             if 0 < index:
                 logger.pop_indent()
@@ -207,7 +154,7 @@ def resize_images_to_proportionally_fit(
         if logger:
             logger.pop_indent()
         new_image = weighted_image.image
-        new_image_size = (last_image_size[0] - margin, last_image_size[1] - margin)
+        new_image_size = (last_image_size.width - margin, last_image_size.height - margin)
         if(weighted_image.image.size != new_image_size):
             if logger:
                 logger.info('resizing ({0},{1}) -> ({2},{3})'.format(

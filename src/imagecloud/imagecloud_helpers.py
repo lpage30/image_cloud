@@ -1,4 +1,5 @@
 import os.path
+from imagecloud.position_box_size import Size
 
 def parse_to_int(s:str) -> int:
     if s == None or not(s.isdigit()):
@@ -10,9 +11,9 @@ def parse_to_float(s:str) -> float:
         raise ValueError('Invalid value {0} must be a number'.fomat(s))
     return float(s)
     
-def parse_to_tuple(s: str) -> tuple[int, int]:
+def parse_to_size(s: str) -> Size:
     width, height = s.split(',')
-    return (parse_to_int(width), parse_to_int(height))
+    return Size((parse_to_int(width), parse_to_int(height)))
 
 def parse_to_existing_filepath(value: str) -> str:
     if not os.path.exists(value):

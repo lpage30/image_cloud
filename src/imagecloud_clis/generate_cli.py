@@ -3,7 +3,7 @@ import argparse
 import sys
 import os
 import numpy as np
-
+from imagecloud.position_box_size import Size
 import imagecloud_clis.cli_helpers as cli_helpers
 from imagecloud.imagecloud_defaults import (
     DEFAULT_IMAGE_FORMAT,
@@ -64,9 +64,9 @@ class ImageCloudGenerateArguments:
         output_image_filepath: str | None,
         output_layout_dirpath: str | None,
         output_image_format: str,
-        max_image_size: tuple[int, int] | None,
-        min_image_size: tuple[int, int],
-        cloud_size: tuple[int, int],
+        max_image_size: Size | None,
+        min_image_size: Size,
+        cloud_size: Size,
         background_color: str,
         contour_width: int,
         contour_color: str,
@@ -140,21 +140,21 @@ class ImageCloudGenerateArguments:
             '-cloud_size',
             default=DEFAULT_CLOUD_SIZE,
             metavar='"<width>,<height>"',
-            type= lambda v: cli_helpers.is_tuple_integers(parser, v),
+            type= lambda v: cli_helpers.is_size(parser, v),
             help='Optional, (default %(default)s) {0}'.format(CLOUD_SIZE_HELP)
         )
         parser.add_argument(
             '-min_image_size',
             default=DEFAULT_MIN_IMAGE_SIZE,
             metavar='"<width>,<height>"',
-            type=lambda v: cli_helpers.is_tuple_integers(parser, v),
+            type=lambda v: cli_helpers.is_size(parser, v),
             help='Optional, (default %(default)s) {0}'.format(MIN_IMAGE_SIZE_HELP)
         )
         parser.add_argument(
             '-max_image_size',
             default=DEFAULT_MAX_IMAGE_SIZE,
             metavar='"<width>,<height>"',
-            type=lambda v: cli_helpers.is_tuple_integers(parser, v),
+            type=lambda v: cli_helpers.is_size(parser, v),
             help='Optional, (default %(default)s) {0}'.format(MAX_IMAGE_SIZE_HELP)
         )
         parser.add_argument(

@@ -1,32 +1,34 @@
 import numpy as np
-from imagecloud.weighted_image import BoxCoordinates
-from imagecloud.native_integral_occupancy_functions import (
-    find_free_position,
-    reserve_position
+from imagecloud.position_box_size import (
+    Size,
+    Position,
+    BoxCoordinates
 )
+import imagecloud.native_integral_occupancy_functions as native
 
 
 OccupancyMapDataType = np.uint32
 OccupancyMapType = np.ndarray[OccupancyMapDataType, OccupancyMapDataType]
 # extrapolated from https://github.com/amueller/word_cloud/blob/main/wordcloud/wordcloud.py
 class IntegralOccupancyMap(object):
-    def __init__(self, map_size: tuple[int, int]):
+    def __init__(self, map_size: Size):
         self.map_size = map_size
         # integral is our 'target' for placement of images
-        self.occupancy_map: OccupancyMapType  = np.zeros(map_size, dtype=OccupancyMapDataType)
+        self.occupancy_map: OccupancyMapType  = np.zeros(map_size.tuple, dtype=OccupancyMapDataType)
 
-    def find_position(self, size: tuple[int, int], random_state) -> None | tuple[int, int]:
-        return find_free_position(self.occupancy_map, size[0], size[1], random_state)
+    def find_position(self, size: Size, random_state) -> None | Position:
+        result = native.find_free_position(self.occupancy_map, size.native, random_state)
+        return Position.from_native(result) if result is not None else result
 
-    def reserve(self, pos: tuple[int, int], size: tuple[int, int], reservation_no: int) -> None:
+    def reserve(self, box: BoxCoordinates, reservation_no: int) -> None:
         if reservation_no == 0:
             raise ValueError('reservation_number cannot be zero')
-        reserve_position(self.occupancy_map, pos[0], pos[1], size[0], size[1], reservation_no)
+        native.reserve_position(self.occupancy_map, box.native, reservation_no)
     
     @staticmethod
-    def create_occupancy_map(map_size: tuple[int, tuple], reservations: list[tuple[tuple[int, int], tuple[int, int]]]) -> OccupancyMapType:
+    def create_occupancy_map(map_size: Size, reservations: list[BoxCoordinates]) -> OccupancyMapType:
         integral = IntegralOccupancyMap(map_size)
         for i in range(len(reservations)):
-            integral.reserve(reservations[i][0], reservations[i][1], i + 1)
+            integral.reserve(reservations[i], i + 1)
         return integral.occupancy_map
         

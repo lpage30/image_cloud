@@ -3,10 +3,16 @@ from PIL import Image
 from random import Random
 import warnings
 import numpy as np
+
+from imagecloud.position_box_size import (
+    Size,
+    Position,
+    BoxCoordinates
+)
 from imagecloud.imagecloud_helpers import (
     parse_to_int,
     parse_to_float,
-    parse_to_tuple,
+    parse_to_size,
 )
 from imagecloud.weighted_image import (
     NamedImage,
@@ -15,8 +21,6 @@ from imagecloud.weighted_image import (
     resize_images_to_proportionally_fit,
     grow_size_by_step,
     shrink_size_by_step,
-    transpose_size,
-    remove_transpose_size,
 )
 from imagecloud.integral_occupancy_map import IntegralOccupancyMap
 import imagecloud.imagecloud_defaults as helper
@@ -90,11 +94,11 @@ class ImageCloud(object):
     """
     def __init__(self, 
                  mask: Image.Image | None = None,
-                 size: tuple[int, int] | None = None,
+                 size: Size | None = None,
                  background_color: str | None = None,
                  max_images: int | None = None,
-                 max_image_size: tuple[int, int] | None = None,
-                 min_image_size: tuple[int, int] | None = None,
+                 max_image_size: Size | None = None,
+                 min_image_size: Size | None = None,
                  image_step: int | None = None,
                  maintain_aspect_ratio: bool | None = None,
                  scale: float | None = None,
@@ -106,11 +110,11 @@ class ImageCloud(object):
                  logger: ConsoleLogger | None = None
     ) -> None:
         self._mask: np.ndarray | None = np.array(mask) if mask is not None else None
-        self._size = size if size is not None else parse_to_tuple(helper.DEFAULT_CLOUD_SIZE)
+        self._size = size if size is not None else parse_to_size(helper.DEFAULT_CLOUD_SIZE)
         self._background_color = background_color if background_color is not None else helper.DEFAULT_BACKGROUND_COLOR
         self._max_images = max_images if max_images is not None else parse_to_int(helper.DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
-        self._min_image_size = min_image_size if min_image_size is not None else helper.parse_to_tuple(helper.DEFAULT_MIN_IMAGE_SIZE)
+        self._min_image_size = min_image_size if min_image_size is not None else parse_to_size(helper.DEFAULT_MIN_IMAGE_SIZE)
         self._image_step = image_step if image_step is not None else parse_to_int(helper.DEFAULT_STEP_SIZE)
         self._maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio is not None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
         self._scale = scale if scale is not None else parse_to_float(helper.DEFAULT_SCALE)
@@ -133,11 +137,11 @@ class ImageCloud(object):
         self._mask = v
 
     @property
-    def size(self) -> tuple[int, int]:
+    def size(self) -> Size:
         return self._size
     
     @size.setter
-    def size(self, v: tuple[int, int]) -> None:
+    def size(self, v: Size) -> None:
         self._size = v
         if self._mask is not None:
             self._mask = None
@@ -153,7 +157,7 @@ class ImageCloud(object):
         
     def generate(self,
                 weighted_images: list[WeightedImage],
-                max_image_size: tuple[int, int] | None = None,
+                max_image_size: Size | None = None,
                 cloud_expansion_step_size: int = 0
     ) -> Layout:
         weighted_images = sort_by_weight(weighted_images, True)[:self._max_images]
@@ -174,10 +178,10 @@ class ImageCloud(object):
 
         while True:
             if self.mask is not None:
-                imagecloud_size = (
+                imagecloud_size = Size((
                     self.mask.shape[0],
                     self.mask.shape[1]
-                )
+                ))
             
             result = self._generate(
                 proportional_images,
@@ -219,9 +223,9 @@ class ImageCloud(object):
 
     def _generate(self,
                 proportional_images: list[WeightedImage],
-                imagecloud_size: tuple[int, int],
+                imagecloud_size: Size,
                 random_state: Random,              
-                max_image_size: tuple[int, int] | None
+                max_image_size: Size | None
     ) -> Layout: 
 
         if len(proportional_images) <= 0:
@@ -231,8 +235,8 @@ class ImageCloud(object):
         occupancy = IntegralOccupancyMap(imagecloud_size)
 
         images: list[NamedImage] = []
-        image_sizes: list[tuple[int,int]] = []
-        positions: list[tuple[int, int]] = []
+        image_sizes: list[Size] = []
+        positions: list[Position] = []
         orientations: list[Image.Transpose | None] = []
 
         if max_image_size is None:
@@ -240,7 +244,7 @@ class ImageCloud(object):
             max_image_size = self._max_image_size
 
         if max_image_size is None:
-            sizes: list[tuple[int, int]] = []
+            sizes: list[Size] = []
             # figure out a good image_size by trying the 1st two inages
             if len(proportional_images) == 1:
                 # we only have one word. We make it big!
@@ -261,10 +265,10 @@ class ImageCloud(object):
                     " is too small or too much of the image is masked "
                     "out.")
             if 1 < len(sizes):
-                max_image_size = (
-                    int(2 * sizes[0][0] * sizes[1][0] / (sizes[0][0] + sizes[1][0])),
-                    int(2 * sizes[0][1] * sizes[1][1] / (sizes[0][1] + sizes[1][1]))
-                )
+                max_image_size = Size((
+                    int(2 * sizes[0].width * sizes[1].width / (sizes[0].width + sizes[1].width)),
+                    int(2 * sizes[0].height * sizes[1].height / (sizes[0].height + sizes[1].height))
+                ))
             else:
                 max_image_size = sizes[0]
 
@@ -290,7 +294,7 @@ class ImageCloud(object):
                 self._logger.info('finding position in ImageCloud')
             
             sampling_count = 0
-            new_image_size = image.size
+            new_image_size = Size(image.size)
             rotate = (self._prefer_horizontal <= random_state.random())
             # sampling we try image 2 ways until we get a position
             # sampling 1:
@@ -322,7 +326,7 @@ class ImageCloud(object):
                     if 0 == sampling_count % 10:
                         self._logger.debug('sampling {0}...'.format(sampling_count))
                     self._logger.push_indent('Sampling {0}'.format(sampling_count))
-                if new_image_size[0] < self._min_image_size[0] or new_image_size[1] < self._min_image_size[1]:
+                if new_image_size < self._min_image_size:
                     # image-size went too small
                     break
 
@@ -330,26 +334,23 @@ class ImageCloud(object):
                     orientation = Image.Transpose.ROTATE_90
                     if self._logger:
                         self._logger.debug('transpose {0}'.format(orientation.name))
-                    new_image_size = transpose_size(new_image_size, orientation)
+                    new_image_size = new_image_size.transpose(orientation)
                 elif 1 < sampling_count and self._logger:
-                    self._logger.debug('resizing ({0},{1}) -> ({2},{3})'.format(
+                    self._logger.debug('resizing ({0},{1}) -> {2}'.format(
                         image.size[0], image.size[1],
-                        new_image_size[0], new_image_size[1]
+                        str(new_image_size)
                     ))
                 
                 # find a free position to occupy                
                 paste_position = occupancy.find_position(
-                    (
-                        new_image_size[0] + self._margin,
-                        new_image_size[1] + self._margin
-                    ),
+                    new_image_size.adjust(self._margin, False),
                     random_state
                 )
                 if paste_position is not None:
                     # Found a place
                     break
                 if rotate: # try resizing before rotating again
-                    new_image_size = remove_transpose_size(new_image_size, orientation)
+                    new_image_size = new_image_size.untranspose(orientation)
                     new_image_size = shrink_size_by_step(new_image_size, self.image_step, self.maintain_aspect_ratio)
                     rotate = False
                     orientation = None
@@ -359,22 +360,18 @@ class ImageCloud(object):
             if self._logger:
                 self._logger.pop_indent()
 
-            if new_image_size[0] < self._min_image_size[0] or new_image_size[1] < self._min_image_size[1]:
+            if new_image_size < self._min_image_size:
                 if self._logger:
                     self._logger.info('Dropping Image. resized too small')
                 break
-
-            paste_position = (
-                paste_position[0] + self._margin //2,
-                paste_position[1] + self._margin //2
-            )
+            paste_position = paste_position.adjust(self._margin //2)
 
             images.append(proportional_images[index])
             image_sizes.append(new_image_size)
             positions.append(paste_position)
             orientations.append(orientation)
             
-            occupancy.reserve(paste_position, new_image_size, index + 1)
+            occupancy.reserve(BoxCoordinates(paste_position, new_image_size), index + 1)
 
         if self._logger:
             self._logger.pop_indent()
