@@ -118,7 +118,7 @@ def generate_named_colors(count: int) -> list[NamedColor]:
         result.append(NamedColor(name))
     return result
 
-def generate_mix_colors(count int) -> list[Color]:
+def generate_mix_colors(count: int) -> list[Color]:
     rand = Random()
     total_colors: list[Color] = rand.shuffle([*generate_named_colors(count), *generate_distinct_colors(count)])
     result: list[NamedColor] = list()
