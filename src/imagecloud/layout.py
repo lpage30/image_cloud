@@ -89,7 +89,7 @@ class LayoutCanvas:
         pixels = image.load()
         for x in range(self.occupancy_map.shape[0]):
             for y in range(self.occupancy_map.shape[1]):
-                pixels[x, y] = self.occupancy_map[x,y]
+                pixels[x, y] = int(self.occupancy_map[x,y])
         
         return NamedImage(image, '{0}.occupancy_map.png'.format(self.name))
     
@@ -347,7 +347,7 @@ class Layout:
         self._contour = contour
         self._items = items
         for item in items:
-            item.reservation_color(canvas.reservation_colors[item.reservation_no])
+            item.reservation_color = canvas.reservation_colors[item.reservation_no]
     
     @property
     def canvas(self) -> LayoutCanvas:
@@ -406,9 +406,10 @@ class Layout:
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
         buf.seek(0)
-        
+        image = Image.open(buf)
+        image.load()
         result = NamedImage(
-            Image.open(buf),
+            image,
             reservation_image.name
         )
         buf.close()

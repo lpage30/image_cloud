@@ -63,7 +63,7 @@ class DistinctColor(Color):
         self.lightness = lightness
         self.saturation = saturation
         self.rgb_coordinates = colorsys.hls_to_rgb(hue, lightness, saturation)
-        super().__init__((self.rgb_coordinates[0] * 255),(self.rgb_coordinates[1] * 255),(self.rgb_coordinates[2] * 255))
+        super().__init__(int(self.rgb_coordinates[0] * 255),int(self.rgb_coordinates[1] * 255),int(self.rgb_coordinates[2] * 255))
 
 
 class IntColor(Color):
