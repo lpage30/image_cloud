@@ -97,7 +97,7 @@ csv file for weighted images with following format:
 ### layout_imagecloud
 ```
 usage: layout_imagecloud [-h] -i <csv_filepath> [-scale <float>] [-save_imagecloud_filepath <filepath_for_save_imagecloud]
-                         [-save_show_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart]
+                         [-save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart]
                          [-save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
                          [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloudreservation_chart] [-verbose] [-no-verbose]
 
@@ -113,7 +113,7 @@ options:
   -scale <float>        Optional, (default 1.0) scale up/down all images
   -save_imagecloud_filepath <filepath_for_save_imagecloud
                         Optional, filepath to save imagecloud
-  -save_show_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart
+  -save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart
                         Optional, filepath to save imagecloud reservation_chart with legend
   -save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
                         Optional,(default png) image format: [blp,bmp,dds,dib,eps,gif,icns,ico,im,jpeg,mpo,msp,pcx,pfm,png,ppm,sgi,webp,xbm]

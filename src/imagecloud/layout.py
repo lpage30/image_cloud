@@ -28,6 +28,20 @@ from imagecloud.colors import (
 
 def is_empty(value: str | None) -> bool:
     return value in ['', None]
+
+def to_existing_filepath(original_filepath: str, possible_dirnames: list[str] | str) -> str:
+    basename = os.path.basename(original_filepath)
+    possible_dirnames = [os.path.dirname(original_filepath), *possible_dirnames]
+    tried_filepaths: list[str] = list()
+    for dirname in possible_dirnames:
+        filepath = os.path.join(dirname, basename)
+        if os.path.exists(filepath):
+            return filepath
+        tried_filepaths.append(filepath)
+    
+    raise ValueError('The file {0} does not exist! (Tried [{1}])'.format(original_filepath, ', '.join(tried_filepaths)))
+    
+    
   
 class LayoutCanvas:
     def __init__(
@@ -115,7 +129,7 @@ class LayoutCanvas:
         return { header:'' for header in LAYOUT_CANVAS_HEADERS }
 
     @staticmethod
-    def load(row: Dict[str,Any], _row_no: int):
+    def load(row: Dict[str,Any], _row_no: int, layout_directory: str):
         if all([is_empty(row[header])  for header in LAYOUT_CANVAS_HEADERS]): 
             return None
         
@@ -124,7 +138,7 @@ class LayoutCanvas:
             row[LAYOUT_CANVAS_MODE],
             row[LAYOUT_CANVAS_BACKGROUND_COLOR] if not(is_empty(row[LAYOUT_CANVAS_BACKGROUND_COLOR])) else None,
             np.loadtxt(
-                fname=row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH],
+                fname=to_existing_filepath(row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH], layout_directory),
                 dtype=OccupancyMapDataType,
                 delimiter=','
             ) if not(is_empty(row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH])) else None,
@@ -203,12 +217,12 @@ class LayoutContour:
         return { header:'' for header in LAYOUT_CONTOUR_HEADERS }
 
     @staticmethod
-    def load(row: Dict[str,Any], _row_no: int):
+    def load(row: Dict[str,Any], _row_no: int, layout_directory: str):
         if all([is_empty(row[header])  for header in LAYOUT_CONTOUR_HEADERS]): 
             return None
 
         return LayoutContour(
-            np.array(NamedImage.load(row[LAYOUT_CONTOUR_MASK_IMAGE_FILEPATH]).image) if not(is_empty(row[LAYOUT_CONTOUR_MASK_IMAGE_FILEPATH])) else None,
+            np.array(NamedImage.load(to_existing_filepath(row[LAYOUT_CONTOUR_MASK_IMAGE_FILEPATH], layout_directory)).image) if not(is_empty(row[LAYOUT_CONTOUR_MASK_IMAGE_FILEPATH])) else None,
             float(row[LAYOUT_CONTOUR_WIDTH]),
             row[LAYOUT_CONTOUR_COLOR]
         )
@@ -324,12 +338,12 @@ class LayoutItem:
         return { header:'' for header in LAYOUT_ITEM_HEADERS }
 
     @staticmethod
-    def load(row: Dict[str,Any], row_no: int):
+    def load(row: Dict[str,Any], row_no: int, layout_directory: str):
         if all([is_empty(row[header])  for header in LAYOUT_ITEM_HEADERS]): 
             return None
 
         return LayoutItem(
-            NamedImage.load(row[LAYOUT_ITEM_IMAGE_FILEPATH]),
+            NamedImage.load(to_existing_filepath(row[LAYOUT_ITEM_IMAGE_FILEPATH], layout_directory)),
             (int(row[LAYOUT_ITEM_SIZE_WIDTH]), int(row[LAYOUT_ITEM_SIZE_HEIGHT])),
             (int(row[LAYOUT_ITEM_POSITION_X]), int(row[LAYOUT_ITEM_POSITION_Y])),
             Image.Transpose[row[LAYOUT_ITEM_ORIENTATION]] if not(is_empty(row[LAYOUT_ITEM_ORIENTATION])) else None,
@@ -439,7 +453,7 @@ class Layout:
         canvas: LayoutCanvas | None = None
         items: list[LayoutItem] = list()
         contour: LayoutContour | None = None
-
+        layout_directory: str = os.path.dirname(csv_filepath)
         with open(csv_filepath, 'r') as file:    
             csv_reader = csv.DictReader(file, fieldnames=LAYOUT_CSV_HEADERS)
             next(csv_reader)
@@ -447,10 +461,10 @@ class Layout:
             for row in csv_reader:
                 row_no += 1
                 if canvas == None:
-                    canvas = LayoutCanvas.load(row, row_no)
+                    canvas = LayoutCanvas.load(row, row_no, layout_directory)
                 if contour == None:
-                    contour = LayoutContour.load(row, row_no)
-                items.append(LayoutItem.load(row, row_no))
+                    contour = LayoutContour.load(row, row_no, layout_directory)
+                items.append(LayoutItem.load(row, row_no, layout_directory))
         
         if canvas == None or contour == None or 0 == len(items):
             return None

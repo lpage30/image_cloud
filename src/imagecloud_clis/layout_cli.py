@@ -25,7 +25,7 @@ class ImageCloudLayoutArguments:
         self, 
         input: str,
         save_imagecloud_filepath: str | None,
-        save_show_reservation_chart_filepath: str | None,
+        save_reservation_chart_filepath: str | None,
         save_imagecloud_format: str,
         scale: float,
         show_imagecloud: bool,
@@ -34,7 +34,7 @@ class ImageCloudLayoutArguments:
     ) -> None:
         self.input = input
         self.save_imagecloud_filepath = save_imagecloud_filepath
-        self.save_show_reservation_chart_filepath = save_show_reservation_chart_filepath
+        self.save_reservation_chart_filepath = save_reservation_chart_filepath
         self.save_imagecloud_format = save_imagecloud_format
         self.scale = scale
         self.show_imagecloud = show_imagecloud
@@ -72,7 +72,7 @@ class ImageCloudLayoutArguments:
             help='Optional, filepath to save imagecloud'
         )
         parser.add_argument(
-            '-save_show_reservation_chart_filepath',
+            '-save_reservation_chart_filepath',
             metavar='<filepath_for_save_imagecloud_reservation_chart',
             type=str,
             help='Optional, filepath to save imagecloud reservation_chart with legend'
@@ -127,7 +127,7 @@ class ImageCloudLayoutArguments:
         return ImageCloudLayoutArguments(
             input=args.input,
             save_imagecloud_filepath=args.save_imagecloud_filepath,
-            save_show_reservation_chart_filepath=args.save_show_reservation_chart_filepath,
+            save_reservation_chart_filepath=args.save_reservation_chart_filepath,
             save_imagecloud_format=args.save_imagecloud_format,
             scale=args.scale,
             show_imagecloud=args.show_imagecloud,
@@ -152,11 +152,11 @@ def layout(args: ImageCloudLayoutArguments | None = None) -> None:
     if args.save_imagecloud_filepath is not None:
         filepath = to_unused_filepath(args.save_imagecloud_filepath)
         print('saving image cloud to {0} as {1} type'.format(filepath, args.save_imagecloud_format))
-        collage.image.save(filepath, args.output_image_format)
+        collage.image.save(filepath, args.save_imagecloud_format)
         print('completed! {0}'.format(filepath))
     
-    if args.save_show_reservation_chart_filepath is not None:
-        filepath = to_unused_filepath(args.save_show_reservation_chart_filepath)
+    if args.save_reservation_chart_filepath is not None:
+        filepath = to_unused_filepath(args.save_reservation_chart_filepath)
         print('saving image cloud reservation chart to {0} as png type'.format(filepath))
         reservation_chart.image.save(filepath)
         print('completed! {0}'.format(filepath))
