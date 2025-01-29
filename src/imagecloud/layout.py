@@ -1,8 +1,7 @@
 from imagecloud.console_logger import ConsoleLogger
 from imagecloud.weighted_image import (
     BoxCoordinates,
-    NamedImage,
-    scale_tuple
+    NamedImage
 )
 from imagecloud.imagecloud_defaults import MODE_TYPES
 from imagecloud.imagecloud_helpers import to_unused_filepath
@@ -12,11 +11,20 @@ from imagecloud.integral_occupancy_map import (
     OccupancyMapDataType
 )
 import numpy as np
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import io
 import os
 from PIL import Image, ImageFilter
 from typing import Any, Dict
 import csv
 import traceback
+from imagecloud.colors import (
+    Color,
+    ColorSource,
+    generate_colors,
+    to_ImagePalette
+)
 
 def is_empty(value: str | None) -> bool:
     return value in ['', None]
@@ -35,6 +43,8 @@ class LayoutCanvas:
         self._mode = mode
         self._background_color = background_color
         self._occupancy_map: OccupancyMapType = occupancy_map if occupancy_map is not None else np.zeros(size, dtype=OccupancyMapDataType)
+        self._reservation_colors = generate_colors(ColorSource.DISTINCT, self._occupancy_map.max() + 1)
+
     
     @property
     def name(self) -> str:
@@ -56,6 +66,10 @@ class LayoutCanvas:
     def occupancy_map(self) -> OccupancyMapType:
         return self._occupancy_map
     
+    @property
+    def reservation_colors(self) -> list[Color]:
+        return self._reservation_colors
+    
     def to_image(self, scale: float = 1.0) -> NamedImage:
         image = Image.new(
             self.mode, (
@@ -65,6 +79,19 @@ class LayoutCanvas:
             self.background_color
         )
         return NamedImage(image, self.name)
+    
+    def to_reservation_image(self) -> NamedImage:
+        image = Image.new(
+            'P',
+            (self.occupancy_map.shape[0], self.occupancy_map.shape[1])
+        )
+        image.putpalette(to_ImagePalette(self.reservation_colors))
+        pixels = image.load()
+        for x in range(self.occupancy_map.shape[0]):
+            for y in range(self.occupancy_map.shape[1]):
+                pixels[x, y] = self.occupancy_map[x,y]
+        
+        return NamedImage(image, '{0}.occupancy_map.png'.format(self.name))
     
     def write(self, layout_directory: str) -> Dict[str,Any]:
         occupancy_csv_filepath = to_unused_filepath(os.path.join(layout_directory, 'layout_canvas_occupancy_map.csv'))
@@ -195,14 +222,19 @@ class LayoutItem:
         size: tuple[int, int],
         position: tuple[int, int],
         orientation: Image.Transpose | None,
-        reservation_no: int,
+        reservation_no: int
     ) -> None:
         self._original_image = original_image
         self._size = size
         self._position = position
         self._orientation = orientation
         self._reservation_no = reservation_no
+        self._reservation_color = None
     
+    @property
+    def name(self) -> str:
+        return self.original_image.name
+
     @property
     def original_image(self) -> NamedImage:
         return self._original_image
@@ -223,18 +255,23 @@ class LayoutItem:
     def reservation_no(self) -> int:
         return self._reservation_no
     
+    @property
+    def reservation_color(self) -> Color | None:
+        return self._reservation_color
+
+    @reservation_color.setter 
+    def reservation_color(self, color: Color) -> None:
+        self._reservation_color = color
+    
     def reservation_box(
         self, 
         scale: float = 1.0
-    ) -> tuple[int, int, int, int]:
-        left = round(self.position[0] * scale)
-        upper = round(self.position[1] * scale)
-        right = left + round(self.size[0] * scale)
-        lower = upper - round(self.size[1] * scale)
-        return (
-            round(self.position[0] * scale),
-            round(self.position[0] * scale)
+    ) -> BoxCoordinates:
+        return BoxCoordinates(
+            (round(self.position[0] * scale), round(self.position[1] * scale)),
+            (round(self.size[0] * scale), round(self.size[1] * scale))
         )
+
     def to_image(
         self,
         scale: float = 1.0,
@@ -261,6 +298,12 @@ class LayoutItem:
             new_image = new_image.resize(new_size)
 
         return NamedImage(new_image, self.original_image.name)
+
+    def to_legend_handle(self) -> mpatches.Patch:
+        return mpatches.Patch(
+            color=self.reservation_color.hex_code,
+            label=self.name
+        )
 
     def write(self, layout_directory: str) -> Dict[str,Any]:
         image_filepath = to_unused_filepath(os.path.join(layout_directory, '{0}.png'.format(self.original_image.name)))
@@ -303,6 +346,8 @@ class Layout:
         self._canvas = canvas
         self._contour = contour
         self._items = items
+        for item in items:
+            item.reservation_color(canvas.reservation_colors[item.reservation_no])
     
     @property
     def canvas(self) -> LayoutCanvas:
@@ -334,11 +379,11 @@ class Layout:
             logger.info('pasting {0} images into imagecloud canvas'.format(total))
 
         for i in range(total):
-            item = self.items[i]
+            item: LayoutItem = self.items[i]
             if logger:
                 logger.info('pasting Image[{0}/{1}] {2} into imagecloud canvas'.format(i + 1, total, item.original_image.name))            
             image = item.to_image(scale, logger)
-            box = BoxCoordinates(scale_tuple(item.position, scale), scale_tuple(item.size, scale))
+            box = item.reservation_box(scale)
             try:
                 canvas.image.paste(
                     im=image.image,
@@ -349,6 +394,25 @@ class Layout:
                     logger.info('Error pasting {0} into {1}. {2} \n{3}'.format(image.name, canvas.name, str(e), '\n'.join(traceback.format_exception(e))))
 
         return self.contour.to_image(canvas)
+
+    def to_reservation_chart_image(self) -> NamedImage:
+        reservation_image: NamedImage = self.canvas.to_reservation_image()
+        legend_handles: list[mpatches.Patch] = [item.to_legend_handle() for item in self.items]
+        fig, ax = plt.subplots()
+        ax.imshow(reservation_image.image)
+        ax.set_title(reservation_image.name)
+        ax.legend(handles=legend_handles)
+        
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        
+        result = NamedImage(
+            Image.open(buf),
+            reservation_image.name
+        )
+        buf.close()
+        return result
 
     def write(self, csv_filepath: str) -> None:
         layout_directory = os.path.dirname(csv_filepath)
@@ -362,7 +426,7 @@ class Layout:
                     **(self.items[i].write(layout_directory))
                 })
                 
-
+        
     @staticmethod
     def load(csv_filepath: str):
         canvas: LayoutCanvas | None = None
@@ -383,7 +447,9 @@ class Layout:
         
         if canvas == None or contour == None or 0 == len(items):
             return None
+        
         return Layout(canvas, contour, items)
+
 
 LAYOUT_CANVAS_SIZE_WIDTH = 'layout_canvas_size_width'
 LAYOUT_CANVAS_SIZE_WIDTH_HELP = '<width>'
