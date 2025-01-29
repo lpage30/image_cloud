@@ -43,7 +43,7 @@ class LayoutCanvas:
         self._mode = mode
         self._background_color = background_color
         self._occupancy_map: OccupancyMapType = occupancy_map if occupancy_map is not None else np.zeros(size, dtype=OccupancyMapDataType)
-        self._reservation_colors = generate_colors(ColorSource.DISTINCT, self._occupancy_map.max() + 1)
+        self._reservation_colors = [*generate_colors(ColorSource.PICKED, self._occupancy_map.max() + 1)]
 
     
     @property
@@ -397,12 +397,18 @@ class Layout:
 
     def to_reservation_chart_image(self) -> NamedImage:
         reservation_image: NamedImage = self.canvas.to_reservation_image()
-        legend_handles: list[mpatches.Patch] = [item.to_legend_handle() for item in self.items]
-        fig, ax = plt.subplots()
-        ax.imshow(reservation_image.image)
-        ax.set_title(reservation_image.name)
-        ax.legend(handles=legend_handles)
-        
+        legend_handles: list[mpatches.Patch] = [
+            mpatches.Patch(
+                color=self.canvas.reservation_colors[0].hex_code,
+                label='UNRESERVED'
+            ),
+            *[item.to_legend_handle() for item in self.items]
+        ]
+        plt.imshow(reservation_image.image)
+        plt.legend(handles=legend_handles, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.axis('off')
+        plt.grid(True)
+        plt.tight_layout()        
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
         buf.seek(0)

@@ -8,19 +8,51 @@ from webcolors import (
     names as color_names,
 )
 
+unique_rgb: tuple[int, int, int] = [
+    (173, 216, 230),
+    (0, 191, 255),
+    (30, 144, 255),
+    (0,   0, 255),
+    (0,   0, 139),
+    (72,  61, 139),
+    (123, 104, 238),
+    (138,  43, 226),
+    (128,   0, 128),
+    (218, 112, 214),
+    (255,   0, 255),
+    (255,  20, 147),
+    (176,  48,  96),
+    (220,  20,  60),
+    (240, 128, 128),
+    (255,  69,   0),
+    (255, 165,   0),
+    (244, 164,  96),
+    (240, 230, 140),
+    (128, 128,   0),
+    (139,  69,  19),
+    (255, 255,   0),
+    (154, 205,  50),
+    (124, 252,   0),
+    (144, 238, 144),
+    (143, 188, 143),
+    (34, 139,  34),
+    (0, 255, 127),
+    (0, 255, 255),
+    (0, 139, 139),
+    (128, 128, 128),
+    (255, 255, 255)
+]
 class ColorSource(Enum):
     NAME = 1
     DISTINCT = 2
-    MIX = 3
+    PICKED = 3
+    MIX = 4
 
 class Color:
     def __init__(self, red: int, green: int, blue: int):
         self._rgb: tuple[int, int, int] = (red, green, blue)
         self._integer: int = red << 16 | green << 8 | blue
-        try:
-            self._name = rgb_to_name(self._rgb)
-        except:
-            self._name = None
+        self._name = None
     @property
     def red(self) -> int:
         return self._rgb[0]
@@ -40,6 +72,10 @@ class Color:
     @property
     def name(self) ->str:
         return self._name if self._name != None else self.hex_code
+
+    @name.setter
+    def name(self, v: str) ->None:
+        self._name = v
     
     @property
     def integer(self) -> int:
@@ -72,9 +108,11 @@ class IntColor(Color):
             (integer >> 16) & int(0xFF),
             (integer >> 8) & int(0xFF),
             integer & int(0xFF)
-        )
- 
- 
+        ) 
+
+WHITE_COLOR = NamedColor('white')
+BLACK_COLOR = NamedColor('black')
+
 def to_ImagePalette(colors: list[Color]) -> ImagePalette.ImagePalette:
     bytearray_pallete: bytearray = bytearray(3*len(colors))
     b: int = 0
@@ -90,19 +128,26 @@ def to_ImagePalette(colors: list[Color]) -> ImagePalette.ImagePalette:
          mode='RGB',
          palette=bytearray_pallete
      )       
+    
+def generate_picked_colors(count: int) -> list[Color]:
+    result: list[Color] = list()
+    for i in range(count):
+        rgb = unique_rgb[i%len(unique_rgb)]
+        result.append(Color(
+            rgb[0], rgb[1], rgb[2]
+        ))
+    return result
         
 def generate_distinct_colors(count: int) -> list[DistinctColor]:
     lightness: float = 0.5 # fixed lightness 
     saturation: float = 1.0 # full saturation 
     result: list[DistinctColor] = list()
     for i in range(count):
-        result.append(
-            DistinctColor(
-                i/count, # evenly spaced hues across count
-                lightness,
-                saturation
-            )
-        )
+        result.append(DistinctColor(
+            i*2 / count*2, # evenly spaced hues across count
+            lightness,
+            saturation
+        ))
     return result
 
 def generate_named_colors(count: int) -> list[NamedColor]:
@@ -113,21 +158,29 @@ def generate_named_colors(count: int) -> list[NamedColor]:
         if 0 == len(names):
             names = color_names()
         
-        name = names[rand.randint(0, len(names))]
+        name = names[rand.randint(0, len(names) - 1)]
         names.remove(name)
         result.append(NamedColor(name))
     return result
 
 def generate_mix_colors(count: int) -> list[Color]:
     rand = Random()
-    total_colors: list[Color] = rand.shuffle([*generate_named_colors(count), *generate_distinct_colors(count)])
+    distinct_colors = generate_distinct_colors(count)
+    named_colors = generate_named_colors(count)
+    picked_colors = generate_picked_colors(count)
+    total_colors: list[Color] = list()
+    total_colors.extend(named_colors)
+    total_colors.extend(distinct_colors)
+    total_colors.extend(picked_colors)
+    rand.shuffle(total_colors)
     result: list[NamedColor] = list()
     for _ in range(count):
-        color = total_colors[rand.randint(0, len(total_colors))]
+        color = total_colors[rand.randint(0, len(total_colors) - 1)]
         total_colors.remove(color)
         result.append(color)
     return result
-    
+
+  
 
 def generate_colors(source: ColorSource, count: int) -> list[Color]:
     match source:
@@ -135,7 +188,7 @@ def generate_colors(source: ColorSource, count: int) -> list[Color]:
             return generate_named_colors(count)
         case ColorSource.DISTINCT:
             return generate_distinct_colors(count)
+        case ColorSource.PICKED:
+            return generate_picked_colors(count)
         case _:
             return generate_mix_colors(count)
-    
- 
