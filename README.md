@@ -18,15 +18,20 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 
 ### generate_imagecloud
 ```
-usage: generate_imagecloud [-h] -i <csv_filepath> [-output_image_filepath <generated_image_cloud_image_filepath>]
+usage: generate_imagecloud [-h] -i <csv_filepath>
+                           [-output_image_filepath <generated_image_cloud_image_filepath>]
                            [-output_layout_dirpath <generated_image_cloud_layout_directory-path>]
                            [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
-                           [-cloud_size "<width>,<height>"] [-min_image_size "<width>,<height>"] [-max_image_size "<width>,<height>"]
-                           [-background_color <color-name>] [-contour_width <float>] [-contour_color <color-name>] [-mask <image_file_path>]
-                           [-step_size <int>] [-cloud_expansion_step_size <int>] [-maintain_aspect_ratio] [-no-maintain_aspect_ratio]
-                           [-prefer_horizontal <float>] [-margin <number>]
-                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [-maximize_empty_space]
-                           [-no-maximize_empty_space] [-show] [-no-show] [-verbose] [-no-verbose]
+                           [-cloud_size "<width>,<height>"] [-min_image_size "<width>,<height>"]
+                           [-max_image_size "<width>,<height>"] [-background_color <color-name>]
+                           [-contour_width <float>] [-contour_color <color-name>]
+                           [-mask <image_file_path>] [-step_size <int>]
+                           [-cloud_expansion_step_size <int>] [-maintain_aspect_ratio]
+                           [-no-maintain_aspect_ratio] [-prefer_horizontal <float>]
+                           [-margin <number>]
+                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N]
+                           [-maximize_empty_space] [-no-maximize_empty_space] [-show] [-no-show]
+                           [-verbose] [-no-verbose]
 
             Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
             
@@ -92,7 +97,6 @@ options:
   -show                 Optional, (default) show resulting image cloud when finished.
   -no-show              Optional, do not show resulting image cloud when finished.
   -verbose              Optional, report progress as constructing cloud
-  -no-verbose           Optional, (default) report progress as constructing cloud
 ```
 #### CSV to import
 csv file for weighted images with following format:
@@ -100,13 +104,18 @@ csv file for weighted images with following format:
 "image_filepath","weight"
 "<full-path-to-image-file>",<weight-as-number>
 ```
+#### Sample generate script
+`sample-generate` is an example of how the `generate_imagecloud` could be used
+
 ### layout_imagecloud
 ```
-usage: layout_imagecloud [-h] -i <csv_filepath> [-scale <float>] [-save_imagecloud_filepath <filepath_for_save_imagecloud]
-                         [-save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart]
+usage: layout_imagecloud [-h] -i <csv_filepath> [-scale <float>]
+                         [-save_imagecloud_filepath <filepath_for_save_imagecloud>]
+                         [-save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart>]
                          [-save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
-                         [-maximize_empty_space] [-no-maximize_empty_space] [-show_imagecloud] [-no-show_imagecloud]
-                         [-show_imagecloud_reservation_chart] [-no-show_image_cloudreservation_chart] [-verbose] [-no-verbose]
+                         [-maximize_empty_space] [-no-maximize_empty_space] [-show_imagecloud]
+                         [-no-show_imagecloud] [-show_imagecloud_reservation_chart]
+                         [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
 
             Layout and show a generated 'ImageCloud' from its layout csv file
             
@@ -118,9 +127,9 @@ options:
                         "layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin_prefer_horizontal","layout_margin","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
                         <integer>,<width>,<height>,<integer>,True|False,<float>,<float>,<image-margin>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
   -scale <float>        Optional, (default 1.0) scale up/down all images
-  -save_imagecloud_filepath <filepath_for_save_imagecloud
+  -save_imagecloud_filepath <filepath_for_save_imagecloud>
                         Optional, filepath to save imagecloud
-  -save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart
+  -save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart>
                         Optional, filepath to save imagecloud reservation_chart with legend
   -save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
                         Optional,(default png) image format: [blp,bmp,dds,dib,eps,gif,icns,ico,im,jpeg,mpo,msp,pcx,pfm,png,ppm,sgi,webp,xbm]
@@ -132,7 +141,7 @@ options:
   -no-show_imagecloud   Optional, (default) do not show mage cloud.
   -show_imagecloud_reservation_chart
                         Optional, show reservation_chart for image cloud.
-  -no-show_image_cloudreservation_chart
+  -no-show_imagecloud_reservation_chart
                         Optional, (default) do not show reservation_chart for image cloud.
   -verbose              Optional, report progress as constructing cloud
   -no-verbose           Optional, (default) report progress as constructing cloud
@@ -144,6 +153,8 @@ csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:
 "layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin_prefer_horizontal","layout_margin","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
 <integer>,<width>,<height>,<integer>,True|False,<float>,<float>,<image-margin>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
 ```
+#### Sample layout script
+`sample-layout` is an example of how the `layout_imagecloud` could be used. This example builds off the `sample-generate` to operate on its result by maximizing the empty-space, if any, surrounding the images in the image-cloud.
 
 ## Images to load
 Really any image supported by pillow open is supported.

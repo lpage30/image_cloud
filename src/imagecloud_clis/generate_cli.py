@@ -123,13 +123,13 @@ class ImageCloudGenerateArguments:
         parser.add_argument(
             '-output_image_filepath',
             metavar='<generated_image_cloud_image_filepath>',
-            type=str,
+            type=lambda fp: cli_helpers.existing_dirpath_of_filepath(parser, fp),
             help='Optional, output file path for generated image cloud image'
         )
         parser.add_argument(
             '-output_layout_dirpath',
             metavar='<generated_image_cloud_layout_directory-path>',
-            type=str,
+            type=lambda fp: cli_helpers.existing_dirpath(parser, fp),
             help='Optional, output directory path into which generated image cloud layout will be written'
         )
         parser.add_argument(

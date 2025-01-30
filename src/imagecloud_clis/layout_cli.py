@@ -70,14 +70,14 @@ class ImageCloudLayoutArguments:
         )
         parser.add_argument(
             '-save_imagecloud_filepath',
-            metavar='<filepath_for_save_imagecloud',
-            type=str,
+            metavar='<filepath_for_save_imagecloud>',
+            type=lambda fp: cli_helpers.existing_dirpath_of_filepath(parser, fp),
             help='Optional, filepath to save imagecloud'
         )
         parser.add_argument(
             '-save_reservation_chart_filepath',
-            metavar='<filepath_for_save_imagecloud_reservation_chart',
-            type=str,
+            metavar='<filepath_for_save_imagecloud_reservation_chart>',
+            type=lambda fp: cli_helpers.existing_dirpath_of_filepath(parser, fp),
             help='Optional, filepath to save imagecloud reservation_chart with legend'
         )
         parser.add_argument(
@@ -119,7 +119,7 @@ class ImageCloudLayoutArguments:
             help='Optional, {0}show reservation_chart for image cloud.'.format('(default) ' if DEFAULT_SHOW_IMAGECLOUD_RESERVATION_CHART else '')
         )
         parser.add_argument(
-            '-no-show_image_cloudreservation_chart',
+            '-no-show_imagecloud_reservation_chart',
             action='store_false',
             dest='show_imagecloud_reservation_chart',
             help='Optional, {0}do not show reservation_chart for image cloud.'.format('' if DEFAULT_SHOW_IMAGECLOUD_RESERVATION_CHART else '(default) ')

@@ -15,9 +15,9 @@ def parse_to_size(s: str) -> Size:
     width, height = s.split(',')
     return Size((parse_to_int(width), parse_to_int(height)))
 
-def parse_to_existing_filepath(value: str) -> str:
+def parse_to_existing_path(pathtype: str, value: str) -> str:
     if not os.path.exists(value):
-        raise ValueError('The file {0} does not exist!'.format(value))
+        raise ValueError('The {0} {1} does not exist!'.format(pathtype, value))
     else:
         return value
     

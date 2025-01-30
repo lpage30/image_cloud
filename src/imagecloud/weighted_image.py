@@ -182,10 +182,13 @@ WEIGHTED_IMAGES_CSV_FILE_HELP = '''csv file for weighted images with following f
 '''.format(WEIGHTED_IMAGE_IMAGE_FILEPATH, WEIGHTED_IMAGE_WEIGHT)
 
 def load_weighted_images(csv_filepath: str) -> list[WeightedImage]:
-    result: list[WeightedImage] = list()
-    with open(csv_filepath, 'r') as file:    
-        csv_reader = csv.DictReader(file, fieldnames=[WEIGHTED_IMAGE_IMAGE_FILEPATH, WEIGHTED_IMAGE_WEIGHT])
-        next(csv_reader)
-        for row in csv_reader:
-            result.append(WeightedImage.load(float(row[WEIGHTED_IMAGE_WEIGHT]), row[WEIGHTED_IMAGE_IMAGE_FILEPATH]))
-    return result
+    try:
+        result: list[WeightedImage] = list()
+        with open(csv_filepath, 'r') as file:    
+            csv_reader = csv.DictReader(file, fieldnames=[WEIGHTED_IMAGE_IMAGE_FILEPATH, WEIGHTED_IMAGE_WEIGHT])
+            next(csv_reader)
+            for row in csv_reader:
+                result.append(WeightedImage.load(float(row[WEIGHTED_IMAGE_WEIGHT]), row[WEIGHTED_IMAGE_IMAGE_FILEPATH]))
+        return result
+    except Exception as e:
+        raise Exception(str(e))

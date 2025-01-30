@@ -4,18 +4,13 @@ from random import Random
 import warnings
 import numpy as np
 
-from imagecloud.position_box_size import (
-    Size,
-    Position,
-    BoxCoordinates
-)
+from imagecloud.position_box_size import Size
 from imagecloud.imagecloud_helpers import (
     parse_to_int,
     parse_to_float,
     parse_to_size,
 )
 from imagecloud.weighted_image import (
-    NamedImage,
     WeightedImage,
     sort_by_weight,
     resize_images_to_proportionally_fit,

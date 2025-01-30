@@ -489,40 +489,43 @@ class Layout:
         
     @staticmethod
     def load(csv_filepath: str):
-        canvas: LayoutCanvas | None = None
-        items: list[LayoutItem] = list()
-        contour: LayoutContour | None = None
-        layout_directory: str = os.path.dirname(csv_filepath)
-        layout_data = {}
-        with open(csv_filepath, 'r') as file:    
-            csv_reader = csv.DictReader(file, fieldnames=LAYOUT_CSV_HEADERS)
-            next(csv_reader)
-            row_no = 0
-            for row in csv_reader:
-                row_no += 1
-                if not(all([header not in row or is_empty(row[header])  for header in LAYOUT_HEADERS])):
-                    layout_data = {}
-                    for header in LAYOUT_HEADERS:
-                        if header in row and not is_empty(row[header]):
-                            layout_data[header] = row[header]
+        try:
+            canvas: LayoutCanvas | None = None
+            items: list[LayoutItem] = list()
+            contour: LayoutContour | None = None
+            layout_directory: str = os.path.dirname(csv_filepath)
+            layout_data = {}
+            with open(csv_filepath, 'r') as file:    
+                csv_reader = csv.DictReader(file, fieldnames=LAYOUT_CSV_HEADERS)
+                next(csv_reader)
+                row_no = 0
+                for row in csv_reader:
+                    row_no += 1
+                    if not(all([header not in row or is_empty(row[header])  for header in LAYOUT_HEADERS])):
+                        layout_data = {}
+                        for header in LAYOUT_HEADERS:
+                            if header in row and not is_empty(row[header]):
+                                layout_data[header] = row[header]
 
-                if canvas == None:
-                    canvas = LayoutCanvas.load(row, row_no, layout_directory)
-                if contour == None:
-                    contour = LayoutContour.load(row, row_no, layout_directory)
-                items.append(LayoutItem.load(row, row_no, layout_directory))
-        
-        if canvas == None or contour == None or 0 == len(items):
-            return None
-        
-        max_images = int(layout_data[LAYOUT_MAX_IMAGES]) if LAYOUT_MAX_IMAGES in layout_data else None
-        min_image_size = Size((int(layout_data[LAYOUT_MIN_IMAGE_SIZE_WIDTH]), int(layout_data[LAYOUT_MIN_IMAGE_SIZE_HEIGHT]))) if LAYOUT_MIN_IMAGE_SIZE_WIDTH in layout_data and LAYOUT_MIN_IMAGE_SIZE_HEIGHT in layout_data else None
-        image_step = int(layout_data[LAYOUT_IMAGE_STEP]) if LAYOUT_IMAGE_STEP in layout_data else None
-        maintain_aspect_ratio = layout_data[LAYOUT_MAINTAIN_ASPECT_RATIO].lower() in ['true', 'yes', '1'] if LAYOUT_MAINTAIN_ASPECT_RATIO in layout_data else None
-        scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
-        prefer_horizontal = float(layout_data[LAYOUT_PREFER_HORIZONTAL]) if LAYOUT_PREFER_HORIZONTAL in layout_data else None
-        margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None        
-        return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, prefer_horizontal, margin)
+                    if canvas == None:
+                        canvas = LayoutCanvas.load(row, row_no, layout_directory)
+                    if contour == None:
+                        contour = LayoutContour.load(row, row_no, layout_directory)
+                    items.append(LayoutItem.load(row, row_no, layout_directory))
+            
+            if canvas == None or contour == None or 0 == len(items):
+                return None
+            
+            max_images = int(layout_data[LAYOUT_MAX_IMAGES]) if LAYOUT_MAX_IMAGES in layout_data else None
+            min_image_size = Size((int(layout_data[LAYOUT_MIN_IMAGE_SIZE_WIDTH]), int(layout_data[LAYOUT_MIN_IMAGE_SIZE_HEIGHT]))) if LAYOUT_MIN_IMAGE_SIZE_WIDTH in layout_data and LAYOUT_MIN_IMAGE_SIZE_HEIGHT in layout_data else None
+            image_step = int(layout_data[LAYOUT_IMAGE_STEP]) if LAYOUT_IMAGE_STEP in layout_data else None
+            maintain_aspect_ratio = layout_data[LAYOUT_MAINTAIN_ASPECT_RATIO].lower() in ['true', 'yes', '1'] if LAYOUT_MAINTAIN_ASPECT_RATIO in layout_data else None
+            scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
+            prefer_horizontal = float(layout_data[LAYOUT_PREFER_HORIZONTAL]) if LAYOUT_PREFER_HORIZONTAL in layout_data else None
+            margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None        
+            return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, prefer_horizontal, margin)
+        except Exception as e:
+            raise Exception(str(e))
 
 LAYOUT_MAX_IMAGES = 'layout_max_images'
 LAYOUT_MAX_IMAGES_HELP = '<integer>'

@@ -1,7 +1,8 @@
 import argparse
+import os.path
 from imagecloud.position_box_size import Size
 from imagecloud.imagecloud_helpers import (
-    parse_to_existing_filepath,
+    parse_to_existing_path,
     parse_to_int,
     parse_to_float,
     parse_to_size,
@@ -10,9 +11,19 @@ from imagecloud.imagecloud_helpers import (
 
 def existing_filepath(parser: argparse.ArgumentParser, value: str) -> str:
     try:
-        return parse_to_existing_filepath(value)
+        return parse_to_existing_path('file', value)
     except Exception as e:
         parser.error(str(e))
+
+def existing_dirpath(parser: argparse.ArgumentParser, value: str) -> str:
+    try:
+        return parse_to_existing_path('directory', value)
+    except Exception as e:
+        parser.error(str(e))
+
+def existing_dirpath_of_filepath(parser: argparse.ArgumentParser, value: str) -> str:
+    existing_dirpath(parser, os.path.dirname(value))
+    return value
     
 def is_one_of_array(parser: argparse.ArgumentParser, value: str, valid_values: list[str]) -> str:
     if value in valid_values:
