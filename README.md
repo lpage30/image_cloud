@@ -20,11 +20,13 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 ```
 usage: generate_imagecloud [-h] -i <csv_filepath> [-output_image_filepath <generated_image_cloud_image_filepath>]
                            [-output_layout_dirpath <generated_image_cloud_layout_directory-path>]
-                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-cloud_size "<width>,<height>"]
-                           [-min_image_size "<width>,<height>"] [-max_image_size "<width>,<height>"] [-background_color <color-name>] [-contour_width <float>]
-                           [-contour_color <color-name>] [-mask <image_file_path>] [-step_size <int>] [-cloud_expansion_step_size <int>] [-maintain_aspect_ratio]
-                           [-no-maintain_aspect_ratio] [-prefer_horizontal <float>] [-margin <number>]
-                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [-show] [-no-show] [-verbose] [-no-verbose]
+                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                           [-cloud_size "<width>,<height>"] [-min_image_size "<width>,<height>"] [-max_image_size "<width>,<height>"]
+                           [-background_color <color-name>] [-contour_width <float>] [-contour_color <color-name>] [-mask <image_file_path>]
+                           [-step_size <int>] [-cloud_expansion_step_size <int>] [-maintain_aspect_ratio] [-no-maintain_aspect_ratio]
+                           [-prefer_horizontal <float>] [-margin <number>]
+                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [-maximize_empty_space]
+                           [-no-maximize_empty_space] [-show] [-no-show] [-verbose] [-no-verbose]
 
             Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
             
@@ -83,6 +85,10 @@ options:
   -margin <number>      Optional, (default 1) The gap to allow between images.
   -mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N
                         Optional, (default RGBA) Transparent background will be generated when mode is "RGBA" and background_color is None.
+  -maximize_empty_space
+                        Optional (default) maximize images, after generation, to fill surrouding empty space.
+  -no-maximize_empty_space
+                        Optional maximize images, after generation, to fill surrouding empty space.
   -show                 Optional, (default) show resulting image cloud when finished.
   -no-show              Optional, do not show resulting image cloud when finished.
   -verbose              Optional, report progress as constructing cloud
@@ -98,8 +104,9 @@ csv file for weighted images with following format:
 ```
 usage: layout_imagecloud [-h] -i <csv_filepath> [-scale <float>] [-save_imagecloud_filepath <filepath_for_save_imagecloud]
                          [-save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart]
-                         [-save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
-                         [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloudreservation_chart] [-verbose] [-no-verbose]
+                         [-save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-maximize_empty_space]
+                         [-no-maximize_empty_space] [-show_imagecloud] [-no-show_imagecloud] [-show_imagecloud_reservation_chart]
+                         [-no-show_imagecloudreservation_chart] [-verbose] [-no-verbose]
 
             Layout and show a generated 'ImageCloud' from its layout csv file
             
@@ -117,6 +124,10 @@ options:
                         Optional, filepath to save imagecloud reservation_chart with legend
   -save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
                         Optional,(default png) image format: [blp,bmp,dds,dib,eps,gif,icns,ico,im,jpeg,mpo,msp,pcx,pfm,png,ppm,sgi,webp,xbm]
+  -maximize_empty_space
+                        Optional maximize images, after generation, to fill surrouding empty space.
+  -no-maximize_empty_space
+                        Optional (default) maximize images, after generation, to fill surrouding empty space.
   -show_imagecloud      Optional, show image cloud.
   -no-show_imagecloud   Optional, (default) do not show mage cloud.
   -show_imagecloud_reservation_chart

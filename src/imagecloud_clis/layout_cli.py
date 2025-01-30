@@ -1,7 +1,6 @@
 from imagecloud.console_logger import ConsoleLogger
 import argparse
 import sys
-
 import imagecloud_clis.cli_helpers as cli_helpers
 
 from imagecloud.layout import (
@@ -14,9 +13,11 @@ from imagecloud.imagecloud_defaults import (
     IMAGE_FORMATS
 )
 from imagecloud.imagecloud_helpers import to_unused_filepath
+from imagecloud.imagecloud import ImageCloud
 
 DEFAULT_SCALE = '1.0'
 DEFAULT_VERBOSE = False
+DEFAULT_MAXIMIZE_EMPTY_SPACE = False
 DEFAULT_SHOW_IMAGECLOUD = False
 DEFAULT_SHOW_IMAGECLOUD_RESERVATION_CHART = False
 
@@ -28,6 +29,7 @@ class ImageCloudLayoutArguments:
         save_reservation_chart_filepath: str | None,
         save_imagecloud_format: str,
         scale: float,
+        maximize_empty_space: bool,
         show_imagecloud: bool,
         show_imagecloud_reservation_chart: bool,
         logger: ConsoleLogger | None
@@ -37,6 +39,7 @@ class ImageCloudLayoutArguments:
         self.save_reservation_chart_filepath = save_reservation_chart_filepath
         self.save_imagecloud_format = save_imagecloud_format
         self.scale = scale
+        self.maximize_empty_space = maximize_empty_space
         self.show_imagecloud = show_imagecloud
         self.show_imagecloud_reservation_chart = show_imagecloud_reservation_chart
         self.logger = logger
@@ -85,6 +88,19 @@ class ImageCloudLayoutArguments:
             help='Optional,(default %(default)s) {0}'.format(IMAGE_FORMAT_HELP)
         )
         parser.add_argument(
+            '-maximize_empty_space',
+            action='store_true',
+            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('(default) ' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '')
+        )
+        parser.add_argument(
+            '-no-maximize_empty_space',
+            action='store_false',
+            dest='maximize_empty_space',
+            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '(default) ')
+        )
+        parser.set_defaults(maximize_empty_space=DEFAULT_MAXIMIZE_EMPTY_SPACE)
+        
+        parser.add_argument(
             '-show_imagecloud',
             action='store_true',
             help='Optional, {0}show image cloud.'.format('(default) ' if DEFAULT_SHOW_IMAGECLOUD else '')
@@ -129,6 +145,7 @@ class ImageCloudLayoutArguments:
             save_imagecloud_filepath=args.save_imagecloud_filepath,
             save_reservation_chart_filepath=args.save_reservation_chart_filepath,
             save_imagecloud_format=args.save_imagecloud_format,
+            maximize_empty_space=args.maximize_empty_space,
             scale=args.scale,
             show_imagecloud=args.show_imagecloud,
             show_imagecloud_reservation_chart=args.show_imagecloud_reservation_chart,
@@ -145,6 +162,11 @@ def layout(args: ImageCloudLayoutArguments | None = None) -> None:
     layout = Layout.load(args.input)
     print('loaded layout with {0} images'.format(len(layout.items)))
     print('laying-out and showing image cloud layout with {0} scaling.'.format(args.scale))
+
+    if args.maximize_empty_space:
+        print('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
+        cloud = ImageCloud.wrap_layout(layout, args.logger.copy() if args.logger else None)
+        layout = cloud.maximize_empty_space(layout)
 
     collage = layout.to_image(scale=args.scale, logger=args.logger.copy() if args.logger else None)
     reservation_chart = layout.to_reservation_chart_image()

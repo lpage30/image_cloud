@@ -154,11 +154,18 @@ class ImageCloud(object):
     def maintain_aspect_ratio(self) -> bool:
         return self._maintain_aspect_ratio
 
-        
+    @property
+    def layout(self) -> Layout | None:
+        return self.layout_
+    
+    @layout.setter
+    def layout(self, v: Layout) -> None:
+        self.layout_ = v
+    
     def generate(self,
                 weighted_images: list[WeightedImage],
                 max_image_size: Size | None = None,
-                cloud_expansion_step_size: int = 0
+                cloud_expansion_step_size: int = 0,
     ) -> Layout:
         weighted_images = sort_by_weight(weighted_images, True)[:self._max_images]
         resize_count = 0
@@ -217,9 +224,70 @@ class ImageCloud(object):
             self._logger = self._logger.copy()
 
         return result
+    
+    
+    def maximize_empty_space(self, layout: Layout | None = None) -> Layout:
+        if layout is None:
+            self._check_generated()
+            layout = self.layout_
+        self.layout_ = layout
+        occupancy = IntegralOccupancyMap()
+        occupancy.occupancy_map = layout.canvas.occupancy_map
+        new_items: list[LayoutItem] = list()
+        total_images = len(layout.items)
+        for i in range(total_images - 1, 0, -1):
+            item: LayoutItem = layout.items[i]
+            new_reservation = occupancy.expand_occupancy(item.reservation_box())
+            occupancy.reserve(new_reservation, item.reservation_no)
+            new_items.append(
+                LayoutItem(
+                    item.original_image,
+                    new_reservation.size,
+                    new_reservation.position,
+                    item.orientation,
+                    item.reservation_no
+                )
+            )
+            if not(item.reservation_box().equal(new_reservation)) and self._logger:
+                self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}}'.format((total_images - i), total_images, item.name, str(item.reservation_box()), str(new_reservation)))
+                
 
-                    
-            
+        new_items.reverse()
+        self.layout_ = Layout(
+            LayoutCanvas(
+                layout.canvas.size,
+                layout.canvas.mode,
+                self.background_color,
+                occupancy.occupancy_map
+            ),
+            LayoutContour(
+                layout.contour.mask,
+                layout.contour.width,
+                layout.contour.color
+            ),
+            new_items
+        )
+        return self.layout_
+
+    def to_image(
+        self
+    ) -> Image.Image:
+        self._check_generated()
+        return self.layout_.to_image(
+            self._scale,
+            self._logger
+        ).image
+
+
+    def to_array(self) -> np.ndarray:
+        """Convert to numpy array.
+
+        Returns
+        -------
+        image : nd-array size (width, height, 3)
+            Word cloud image as numpy matrix.
+        """
+        return np.array(self.to_image())
 
     def _generate(self,
                 proportional_images: list[WeightedImage],
@@ -407,27 +475,6 @@ class ImageCloud(object):
         if not hasattr(self, "layout_"):
             raise ValueError("ImageCloud has not been calculated, call generate"
                              " first.")
-
-    def to_image(
-        self
-    ) -> Image.Image:
-        self._check_generated()
-        return self.layout_.to_image(
-            self._scale,
-            self._logger
-        ).image
-
-
-    def to_array(self) -> np.ndarray:
-        """Convert to numpy array.
-
-        Returns
-        -------
-        image : nd-array size (width, height, 3)
-            Word cloud image as numpy matrix.
-        """
-        return np.array(self.to_image())
-        
     
     def _get_boolean_mask(self, mask: np.ndarray) -> bool | np.ndarray:
         """Cast to two dimensional boolean mask."""
@@ -442,3 +489,28 @@ class ImageCloud(object):
         else:
             raise ValueError("Got mask of invalid shape: %s" % str(mask.shape))
         return boolean_mask
+
+    @staticmethod
+    def wrap_layout(
+        layout: Layout,
+        logger: ConsoleLogger | None = None
+    ):
+        result = ImageCloud(
+            layout.contour.mask,
+            layout.canvas.size,
+            layout.canvas.background_color,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            layout.contour.width,
+            layout.contour.color,
+            None,
+            None,
+            layout.canvas.mode,
+            logger
+        )
+        result.layout = layout
+        return result

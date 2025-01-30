@@ -152,7 +152,7 @@ class BoxCoordinates:
     
     def __str__(self):
         return f"({self.left},{self.upper},{self.right},{self.lower})"
-    
+
     @property
     def native(self):
         return native.to_box(self.position.native, self.size.native)

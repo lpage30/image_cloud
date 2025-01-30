@@ -18,6 +18,16 @@ cdef struct Position:
     int left
     int upper
 
+cdef struct Point:
+    int x
+    int y
+
+def to_point(int x, int y):
+    cdef Point r
+    r.x = x
+    r.y = y
+    return r
+
 def to_box(Position position, Size size):
     cdef BoxCoordinates r
     r.left = position.left
@@ -25,7 +35,7 @@ def to_box(Position position, Size size):
     r.right = position.left + size.width
     r.lower = position.upper + size.height
     return r
-
+    
 def to_position(int left, int upper):
     cdef Position r
     r.left = left
@@ -37,6 +47,33 @@ def to_size(int width, int height):
     r.width = width
     r.height = height
     return r
+
+def get_size(BoxCoordinates box):
+    return to_size(box.right - box.left, box.lower - box.upper)
+
+def get_position(BoxCoordinates box):
+    return to_position(box.left, box.upper)
+
+def get_upper_left_point(BoxCoordinates box):
+    cdef Point r
+    r.x = box.left
+    r.y = box.upper
+    return r
+
+def get_lower_right_point(BoxCoordinates box):
+    cdef Point r
+    r.x = box.right
+    r.y = box.lower
+    return r
+
+def points_to_box(Point upper_left, Point lower_right):
+    cdef BoxCoordinates r
+    r.left = upper_left.x
+    r.upper = upper_left.y
+    r.right = lower_right.x
+    r.lower = lower_right.y
+    return r
+
 
 def is_size_too_wide(unsigned int[:,:] occupancy_map, int position_x, int width):
     return occupancy_map.shape[0] <= (position_x + width)
@@ -84,3 +121,42 @@ def reserve_position(unsigned int[:,:] occupancy_map, BoxCoordinates box, int re
     for x in range(box.left, box.right):
         for y in range(box.upper, box.lower):
             occupancy_map[x, y] = reservation_no
+
+
+def expand_upper_left(unsigned int[:,:] occupancy_map, BoxCoordinates box):
+    # expand box to upper left until no more freespace or cannot find_free_position
+    cdef Point lower_right = get_lower_right_point(box)
+    cdef BoxCoordinates new_box = box
+    cdef BoxCoordinates result = box
+    for x in range(box.left, 0, -1): # expand top left
+        for y in range(box.upper, 0, -1): # expand top up
+            new_box = points_to_box(to_point(x, y), lower_right)
+            if is_free_position(occupancy_map, new_box):
+                result = new_box
+            else:
+                return result
+
+    return result
+
+def expand_lower_right(unsigned int[:,:] occupancy_map, BoxCoordinates box):
+    # expand box to upper left until no more freespace or cannot find_free_position
+    cdef Size scan_size = to_size(occupancy_map.shape[0], occupancy_map.shape[1])
+    cdef Point upper_left = get_lower_right_point(box)
+    cdef BoxCoordinates new_box = box
+    cdef BoxCoordinates result = box
+    for x in range(box.right, scan_size.width): # expand bottom right
+        for y in range(box.lower, scan_size.height): # expand bottom down
+            new_box = points_to_box(upper_left, to_point(x, y))
+            if is_free_position(occupancy_map, new_box):
+                result = new_box
+            else:
+                return result
+
+    return result
+
+def expand_occupancy(unsigned int[:,:] occupancy_map, BoxCoordinates box):
+    cdef BoxCoordinates result = box
+    result = expand_upper_left(occupancy_map,box)
+    result = expand_lower_right(occupancy_map,result)
+    return result
+    

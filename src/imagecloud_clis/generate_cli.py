@@ -48,6 +48,7 @@ from imagecloud.imagecloud_defaults import (
 from imagecloud.imagecloud import (
     ImageCloud
 )
+DEFAULT_MAXIMIZE_EMPTY_SPACE = True
 DEFAULT_SHOW = True
 DEFAULT_VERBOSE = False
 DEFAULT_CLOUD_EXPAND_STEP_SIZE = '0'
@@ -78,6 +79,7 @@ class ImageCloudGenerateArguments:
         mode: str,
         show: bool,
         cloud_expansion_step_size: int,
+        maximize_empty_space: bool,
         logger: ConsoleLogger | None
     ) -> None:
         self.input = input
@@ -98,6 +100,7 @@ class ImageCloudGenerateArguments:
         self.mode = mode
         self.show = show
         self.cloud_expansion_step_size = cloud_expansion_step_size
+        self.maximize_empty_space = maximize_empty_space
         self.logger = logger
     
     @staticmethod
@@ -232,6 +235,19 @@ class ImageCloudGenerateArguments:
             help='Optional, (default %(default)s) {0}'.format(MODE_HELP)
         )
         parser.add_argument(
+            '-maximize_empty_space',
+            action='store_true',
+            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('(default) ' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '')
+        )
+        parser.add_argument(
+            '-no-maximize_empty_space',
+            action='store_false',
+            dest='maximize_empty_space',
+            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '(default) ')
+        )
+        parser.set_defaults(maximize_empty_space=DEFAULT_MAXIMIZE_EMPTY_SPACE)
+
+        parser.add_argument(
             '-show',
             action='store_true',
             help='Optional, {0}show resulting image cloud when finished.'.format('(default) ' if DEFAULT_SHOW else '')
@@ -277,6 +293,7 @@ class ImageCloudGenerateArguments:
             mode=args.mode,
             show=args.show,
             cloud_expansion_step_size=args.cloud_expansion_step_size,
+            maximize_empty_space=args.maximize_empty_space,
             logger=ConsoleLogger.create(args.verbose)
         )
 
@@ -311,6 +328,10 @@ def generate(args: ImageCloudGenerateArguments | None = None) -> None:
     ))
 
     layout = image_cloud.generate(weighted_images, cloud_expansion_step_size=args.cloud_expansion_step_size)
+    if args.maximize_empty_space:
+        print('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
+        layout = image_cloud.maximize_empty_space(layout)
+
     reconstructed_occupancy_map = layout.reconstruct_occupancy_map()
     if not(np.array_equal(layout.canvas.occupancy_map, reconstructed_occupancy_map)):
         print('Warning occupancy map from generation not same as reconstructed from images.')
