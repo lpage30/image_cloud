@@ -119,7 +119,7 @@ class ImageCloudLayoutArguments:
             help='Optional, {0}show reservation_chart for image cloud.'.format('(default) ' if DEFAULT_SHOW_IMAGECLOUD_RESERVATION_CHART else '')
         )
         parser.add_argument(
-            '-no-show_imagecloudreservation_chart',
+            '-no-show_image_cloudreservation_chart',
             action='store_false',
             dest='show_imagecloud_reservation_chart',
             help='Optional, {0}do not show reservation_chart for image cloud.'.format('' if DEFAULT_SHOW_IMAGECLOUD_RESERVATION_CHART else '(default) ')
@@ -165,7 +165,7 @@ def layout(args: ImageCloudLayoutArguments | None = None) -> None:
 
     if args.maximize_empty_space:
         print('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
-        cloud = ImageCloud.wrap_layout(layout, args.logger.copy() if args.logger else None)
+        cloud = ImageCloud.create(layout, args.logger.copy() if args.logger else None)
         layout = cloud.maximize_empty_space(layout)
 
     collage = layout.to_image(scale=args.scale, logger=args.logger.copy() if args.logger else None)

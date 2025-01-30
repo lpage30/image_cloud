@@ -86,9 +86,9 @@ options:
   -mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N
                         Optional, (default RGBA) Transparent background will be generated when mode is "RGBA" and background_color is None.
   -maximize_empty_space
-                        Optional (default) maximize images, after generation, to fill surrouding empty space.
-  -no-maximize_empty_space
                         Optional maximize images, after generation, to fill surrouding empty space.
+  -no-maximize_empty_space
+                        Optional (default) maximize images, after generation, to fill surrouding empty space.
   -show                 Optional, (default) show resulting image cloud when finished.
   -no-show              Optional, do not show resulting image cloud when finished.
   -verbose              Optional, report progress as constructing cloud
@@ -104,9 +104,9 @@ csv file for weighted images with following format:
 ```
 usage: layout_imagecloud [-h] -i <csv_filepath> [-scale <float>] [-save_imagecloud_filepath <filepath_for_save_imagecloud]
                          [-save_reservation_chart_filepath <filepath_for_save_imagecloud_reservation_chart]
-                         [-save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-maximize_empty_space]
-                         [-no-maximize_empty_space] [-show_imagecloud] [-no-show_imagecloud] [-show_imagecloud_reservation_chart]
-                         [-no-show_imagecloudreservation_chart] [-verbose] [-no-verbose]
+                         [-save_imagecloud_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                         [-maximize_empty_space] [-no-maximize_empty_space] [-show_imagecloud] [-no-show_imagecloud]
+                         [-show_imagecloud_reservation_chart] [-no-show_image_cloudreservation_chart] [-verbose] [-no-verbose]
 
             Layout and show a generated 'ImageCloud' from its layout csv file
             
@@ -115,8 +115,8 @@ options:
   -h, --help            show this help message and exit
   -i, --input <csv_filepath>
                         Required, csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:
-                        "layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_size_width","layout_item_size_height","layout_item_position_x","layout_item_position_y","layout_item_orientation","layout_item_reservation_no"
-                        <name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<width>,<height>,<x>,<y>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<empty>|<reservation_no_in_occupancy_map>
+                        "layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin_prefer_horizontal","layout_margin","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
+                        <integer>,<width>,<height>,<integer>,True|False,<float>,<float>,<image-margin>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
   -scale <float>        Optional, (default 1.0) scale up/down all images
   -save_imagecloud_filepath <filepath_for_save_imagecloud
                         Optional, filepath to save imagecloud
@@ -132,7 +132,7 @@ options:
   -no-show_imagecloud   Optional, (default) do not show mage cloud.
   -show_imagecloud_reservation_chart
                         Optional, show reservation_chart for image cloud.
-  -no-show_imagecloudreservation_chart
+  -no-show_image_cloudreservation_chart
                         Optional, (default) do not show reservation_chart for image cloud.
   -verbose              Optional, report progress as constructing cloud
   -no-verbose           Optional, (default) report progress as constructing cloud
@@ -141,8 +141,8 @@ options:
 csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:
 ```csv
 
-"layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_size_width","layout_item_size_height","layout_item_position_x","layout_item_position_y","layout_item_orientation","layout_item_reservation_no"
-<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<width>,<height>,<x>,<y>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<empty>|<reservation_no_in_occupancy_map>
+"layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin_prefer_horizontal","layout_margin","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
+<integer>,<width>,<height>,<integer>,True|False,<float>,<float>,<image-margin>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
 ```
 
 ## Images to load

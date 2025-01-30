@@ -1,8 +1,13 @@
 from imagecloud.console_logger import ConsoleLogger
 from imagecloud.weighted_image import NamedImage
 from imagecloud.position_box_size import (Size, Position, BoxCoordinates)
-from imagecloud.imagecloud_defaults import MODE_TYPES
-from imagecloud.imagecloud_helpers import to_unused_filepath
+import imagecloud.imagecloud_defaults as helper
+from imagecloud.imagecloud_helpers import (
+    parse_to_int,
+    parse_to_float,
+    parse_to_size,
+    to_unused_filepath
+)
 from imagecloud.integral_occupancy_map import (
     IntegralOccupancyMap,
     OccupancyMapType, 
@@ -229,15 +234,15 @@ class LayoutItem:
     def __init__(
         self,
         original_image: NamedImage,
-        size: Size,
-        position: Position,
+        placement_box: BoxCoordinates,
         orientation: Image.Transpose | None,
+        reservation_box: BoxCoordinates,        
         reservation_no: int
     ) -> None:
         self._original_image = original_image
-        self._size = size
-        self._position = position
+        self._placement_box = placement_box
         self._orientation = orientation
+        self._reservation_box = reservation_box
         self._reservation_no = reservation_no
         self._reservation_color = None
     
@@ -250,16 +255,16 @@ class LayoutItem:
         return self._original_image
     
     @property
-    def size(self) -> Size:
-        return self._size
-    
-    @property
-    def position(self) -> Position:
-        return self._position
-    
+    def placement_box(self) -> BoxCoordinates:
+        return self._placement_box
+        
     @property
     def orientation(self) -> Image.Transpose | None:
         return self._orientation
+
+    @property    
+    def reservation_box(self) -> BoxCoordinates:
+        return self._reservation_box
 
     @property
     def reservation_no(self) -> int:
@@ -272,15 +277,6 @@ class LayoutItem:
     @reservation_color.setter 
     def reservation_color(self, color: Color) -> None:
         self._reservation_color = color
-    
-    def reservation_box(
-        self, 
-        scale: float = 1.0
-    ) -> BoxCoordinates:
-        return BoxCoordinates(
-            self.position.scale(scale),
-            self.size.scale(scale)
-        )
 
     def to_image(
         self,
@@ -291,10 +287,10 @@ class LayoutItem:
 
         if self.orientation:
             if logger:
-                logger.info('Transposing {0} {1}'.format(self.original_image.name, self.orientation.name))
+                logger.info('Transposing {0} {1}'.format(self.name, self.orientation.name))
             new_image = new_image.transpose(self.orientation)
         
-        new_size = self.size.scale(scale)
+        new_size = self.placement_box.size.scale(scale)
         if new_image.size != new_size.tuple:
             if logger:
                 logger.info('Resizing {0} ({1},{2}) -> {3}'.format(
@@ -318,11 +314,15 @@ class LayoutItem:
         
         return {
             LAYOUT_ITEM_IMAGE_FILEPATH: image_filepath,
-            LAYOUT_ITEM_SIZE_WIDTH: self.size.width,
-            LAYOUT_ITEM_SIZE_HEIGHT: self.size.height,
-            LAYOUT_ITEM_POSITION_X: self.position.left,
-            LAYOUT_ITEM_POSITION_Y: self.position.upper,
+            LAYOUT_ITEM_POSITION_X: self.placement_box.position.left,
+            LAYOUT_ITEM_POSITION_Y: self.placement_box.position.upper,
+            LAYOUT_ITEM_SIZE_WIDTH: self.placement_box.size.width,
+            LAYOUT_ITEM_SIZE_HEIGHT: self.placement_box.size.height,
             LAYOUT_ITEM_ORIENTATION: self.orientation.name if self.orientation is not None else '',
+            LAYOUT_ITEM_RESERVATION_POSITION_X: self.reservation_box.position.left,
+            LAYOUT_ITEM_RESERVATION_POSITION_Y: self.reservation_box.position.upper,
+            LAYOUT_ITEM_RESERVATION_SIZE_WIDTH: self.reservation_box.size.width,
+            LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT: self.reservation_box.size.height,
             LAYOUT_ITEM_RESERVATION_NO: self.reservation_no
         }
 
@@ -335,11 +335,29 @@ class LayoutItem:
         if all([is_empty(row[header])  for header in LAYOUT_ITEM_HEADERS]): 
             return None
 
+        placement_box = BoxCoordinates(
+            Position((int(row[LAYOUT_ITEM_POSITION_X]), int(row[LAYOUT_ITEM_POSITION_Y]))),
+            Size((int(row[LAYOUT_ITEM_SIZE_WIDTH]), int(row[LAYOUT_ITEM_SIZE_HEIGHT])))
+        )
+        reservation_box = placement_box
+        reservation_headers = [
+            LAYOUT_ITEM_RESERVATION_POSITION_X,
+            LAYOUT_ITEM_RESERVATION_POSITION_Y,
+            LAYOUT_ITEM_RESERVATION_SIZE_WIDTH,
+            LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT
+        ]
+
+        if all([header in row and not(is_empty(row[header])) for header in reservation_headers]):
+            reservation_box = BoxCoordinates(
+                Position((int(row[LAYOUT_ITEM_RESERVATION_POSITION_X]), int(row[LAYOUT_ITEM_RESERVATION_POSITION_Y]))),
+                Size((int(row[LAYOUT_ITEM_RESERVATION_SIZE_WIDTH]), int(row[LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT])))
+            )
+        
         return LayoutItem(
             NamedImage.load(to_existing_filepath(row[LAYOUT_ITEM_IMAGE_FILEPATH], layout_directory)),
-            Size((int(row[LAYOUT_ITEM_SIZE_WIDTH]), int(row[LAYOUT_ITEM_SIZE_HEIGHT]))),
-            Position((int(row[LAYOUT_ITEM_POSITION_X]), int(row[LAYOUT_ITEM_POSITION_Y]))),
+            placement_box,
             Image.Transpose[row[LAYOUT_ITEM_ORIENTATION]] if not(is_empty(row[LAYOUT_ITEM_ORIENTATION])) else None,
+            reservation_box,
             int(row[LAYOUT_ITEM_RESERVATION_NO]) if not(is_empty(row[LAYOUT_ITEM_RESERVATION_NO])) else row_no
         )
 
@@ -348,13 +366,30 @@ class Layout:
         self,
         canvas: LayoutCanvas,
         contour: LayoutContour,
-        items: list[LayoutItem]
+        items: list[LayoutItem],
+        max_images: int | None = None,
+        min_image_size: Size | None = None,
+        image_step: int | None = None,
+        maintain_aspect_ratio: bool | None = None,
+        scale: float | None = None,
+        prefer_horizontal: float | None = None,
+        margin: int | None = None,
+        
     ) -> None:
         self._canvas = canvas
         self._contour = contour
         self._items = items
         for item in items:
             item.reservation_color = canvas.reservation_colors[item.reservation_no]
+            
+        self.max_images = max_images if max_images is not None else parse_to_int(helper.DEFAULT_MAX_IMAGES)
+        self.min_image_size = min_image_size if min_image_size is not None else parse_to_size(helper.DEFAULT_MIN_IMAGE_SIZE)
+        self.image_step = image_step if image_step is not None else parse_to_int(helper.DEFAULT_STEP_SIZE)
+        self.maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio is not None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
+        self.scale = scale if scale is not None else parse_to_float(helper.DEFAULT_SCALE)
+
+        self.prefer_horizontal = prefer_horizontal if prefer_horizontal is not None else parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
+        self.margin = margin if margin is not None else parse_to_int(helper.DEFAULT_MARGIN)
     
     @property
     def canvas(self) -> LayoutCanvas:
@@ -371,7 +406,7 @@ class Layout:
     def reconstruct_occupancy_map(self) -> OccupancyMapType:
         return IntegralOccupancyMap.create_occupancy_map(
             self.canvas.size,
-            [item.reservation_box() for item in self.items]
+            [item.reservation_box for item in self.items]
         )
     
     def to_image(
@@ -390,7 +425,7 @@ class Layout:
             if logger:
                 logger.info('pasting Image[{0}/{1}] {2} into imagecloud canvas'.format(i + 1, total, item.original_image.name))            
             image = item.to_image(scale, logger)
-            box = item.reservation_box(scale)
+            box = item.placement_box.scale(scale)
             try:
                 canvas.image.paste(
                     im=image.image,
@@ -430,11 +465,22 @@ class Layout:
 
     def write(self, csv_filepath: str) -> None:
         layout_directory = os.path.dirname(csv_filepath)
+        layout_data = {
+            LAYOUT_MAX_IMAGES: self.max_images,
+            LAYOUT_MIN_IMAGE_SIZE_WIDTH: self.min_image_size.width,
+            LAYOUT_MIN_IMAGE_SIZE_HEIGHT: self.min_image_size.height,
+            LAYOUT_IMAGE_STEP: self.image_step,
+            LAYOUT_MAINTAIN_ASPECT_RATIO: self.maintain_aspect_ratio,
+            LAYOUT_SCALE: self.scale,
+            LAYOUT_PREFER_HORIZONTAL: self.prefer_horizontal,
+            LAYOUT_MARGIN: self.margin
+        }
         with open(csv_filepath, 'w') as file:
             csv_writer = csv.DictWriter(file, fieldnames=LAYOUT_CSV_HEADERS)
             csv_writer.writeheader()
             for i in range(len(self.items)):
                 csv_writer.writerow({
+                    **(layout_data if i == 0 else { header:'' for header in LAYOUT_HEADERS }),
                     **(self.canvas.write(layout_directory) if i == 0 else LayoutCanvas.empty_csv_data()),
                     **(self.contour.write(layout_directory) if i == 0 else LayoutContour.empty_csv_data()),
                     **(self.items[i].write(layout_directory))
@@ -447,12 +493,19 @@ class Layout:
         items: list[LayoutItem] = list()
         contour: LayoutContour | None = None
         layout_directory: str = os.path.dirname(csv_filepath)
+        layout_data = {}
         with open(csv_filepath, 'r') as file:    
             csv_reader = csv.DictReader(file, fieldnames=LAYOUT_CSV_HEADERS)
             next(csv_reader)
             row_no = 0
             for row in csv_reader:
                 row_no += 1
+                if not(all([header not in row or is_empty(row[header])  for header in LAYOUT_HEADERS])):
+                    layout_data = {}
+                    for header in LAYOUT_HEADERS:
+                        if header in row and not is_empty(row[header]):
+                            layout_data[header] = row[header]
+
                 if canvas == None:
                     canvas = LayoutCanvas.load(row, row_no, layout_directory)
                 if contour == None:
@@ -462,15 +515,57 @@ class Layout:
         if canvas == None or contour == None or 0 == len(items):
             return None
         
-        return Layout(canvas, contour, items)
+        max_images = int(layout_data[LAYOUT_MAX_IMAGES]) if LAYOUT_MAX_IMAGES in layout_data else None
+        min_image_size = Size((int(layout_data[LAYOUT_MIN_IMAGE_SIZE_WIDTH]), int(layout_data[LAYOUT_MIN_IMAGE_SIZE_HEIGHT]))) if LAYOUT_MIN_IMAGE_SIZE_WIDTH in layout_data and LAYOUT_MIN_IMAGE_SIZE_HEIGHT in layout_data else None
+        image_step = int(layout_data[LAYOUT_IMAGE_STEP]) if LAYOUT_IMAGE_STEP in layout_data else None
+        maintain_aspect_ratio = layout_data[LAYOUT_MAINTAIN_ASPECT_RATIO].lower() in ['true', 'yes', '1'] if LAYOUT_MAINTAIN_ASPECT_RATIO in layout_data else None
+        scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
+        prefer_horizontal = float(layout_data[LAYOUT_PREFER_HORIZONTAL]) if LAYOUT_PREFER_HORIZONTAL in layout_data else None
+        margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None        
+        return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, prefer_horizontal, margin)
 
-
+LAYOUT_MAX_IMAGES = 'layout_max_images'
+LAYOUT_MAX_IMAGES_HELP = '<integer>'
+LAYOUT_MIN_IMAGE_SIZE_WIDTH = 'layout_min_image_size_width'
+LAYOUT_MIN_IMAGE_SIZE_WIDTH_HELP = '<width>'
+LAYOUT_MIN_IMAGE_SIZE_HEIGHT = 'layout_min_image_size_height'
+LAYOUT_MIN_IMAGE_SIZE_HEIGHT_HELP = '<height>'
+LAYOUT_IMAGE_STEP = 'layout_image_step'
+LAYOUT_IMAGE_STEP_HELP = '<integer>'
+LAYOUT_MAINTAIN_ASPECT_RATIO = 'layout_maintain_aspect_ratio'
+LAYOUT_MAINTAIN_ASPECT_RATIO_HELP = 'True|False'
+LAYOUT_SCALE = 'layout_scale'
+LAYOUT_SCALE_HELP = '<float>'
+LAYOUT_PREFER_HORIZONTAL = 'layout_margin_prefer_horizontal'
+LAYOUT_PREFER_HORIZONTAL_HELP = '<float>'
+LAYOUT_MARGIN = 'layout_margin'
+LAYOUT_MARGIN_HELP = '<image-margin>'
+LAYOUT_HEADERS = [
+    LAYOUT_MAX_IMAGES,
+    LAYOUT_MIN_IMAGE_SIZE_WIDTH,
+    LAYOUT_MIN_IMAGE_SIZE_HEIGHT,
+    LAYOUT_IMAGE_STEP,
+    LAYOUT_MAINTAIN_ASPECT_RATIO,
+    LAYOUT_SCALE,
+    LAYOUT_PREFER_HORIZONTAL,
+    LAYOUT_MARGIN
+]
+LAYOUT_HEADERS_HELP = [
+    LAYOUT_MAX_IMAGES_HELP,
+    LAYOUT_MIN_IMAGE_SIZE_WIDTH_HELP,
+    LAYOUT_MIN_IMAGE_SIZE_HEIGHT_HELP,
+    LAYOUT_IMAGE_STEP_HELP,
+    LAYOUT_MAINTAIN_ASPECT_RATIO_HELP,
+    LAYOUT_SCALE_HELP,
+    LAYOUT_PREFER_HORIZONTAL_HELP,
+    LAYOUT_MARGIN_HELP
+]
 LAYOUT_CANVAS_SIZE_WIDTH = 'layout_canvas_size_width'
 LAYOUT_CANVAS_SIZE_WIDTH_HELP = '<width>'
 LAYOUT_CANVAS_SIZE_HEIGHT = 'layout_canvas_size_height'
 LAYOUT_CANVAS_SIZE_HEIGHT_HELP = '<height>'
 LAYOUT_CANVAS_MODE = 'layout_canvas_mode'
-LAYOUT_CANVAS_MODE_HELP = '|'.join(MODE_TYPES)
+LAYOUT_CANVAS_MODE_HELP = '|'.join(helper.MODE_TYPES)
 LAYOUT_CANVAS_BACKGROUND_COLOR = 'layout_canvas_background_color'
 LAYOUT_CANVAS_BACKGROUND_COLOR_HELP = '<empty>|<any-color-name>'
 LAYOUT_CANVAS_NAME = 'layout_canvas_name'
@@ -513,43 +608,62 @@ LAYOUT_CONTOUR_HEADER_HELP = [
 
 LAYOUT_ITEM_IMAGE_FILEPATH = 'layout_item_image_filepath'
 LAYOUT_ITEM_IMAGE_FILEPATH_HELP = '<filepath-of-image-to-paste>'
-LAYOUT_ITEM_SIZE_WIDTH = 'layout_item_size_width'
-LAYOUT_ITEM_SIZE_WIDTH_HELP = '<width>'
-LAYOUT_ITEM_SIZE_HEIGHT = 'layout_item_size_height'
-LAYOUT_ITEM_SIZE_HEIGHT_HELP = '<height>'
 LAYOUT_ITEM_POSITION_X = 'layout_item_position_x'
 LAYOUT_ITEM_POSITION_X_HELP = '<x>'
 LAYOUT_ITEM_POSITION_Y = 'layout_item_position_y'
 LAYOUT_ITEM_POSITION_Y_HELP = '<y>'
+LAYOUT_ITEM_SIZE_WIDTH = 'layout_item_size_width'
+LAYOUT_ITEM_SIZE_WIDTH_HELP = '<width>'
+LAYOUT_ITEM_SIZE_HEIGHT = 'layout_item_size_height'
+LAYOUT_ITEM_SIZE_HEIGHT_HELP = '<height>'
 LAYOUT_ITEM_ORIENTATION = 'layout_item_orientation'
 LAYOUT_ITEM_ORIENTATION_HELP = '<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE'
+LAYOUT_ITEM_RESERVATION_POSITION_X = 'layout_item_reserved_position_x'
+LAYOUT_ITEM_RESERVATION_POSITION_X_HELP = '<x>'
+LAYOUT_ITEM_RESERVATION_POSITION_Y = 'layout_item_reserved_position_y'
+LAYOUT_ITEM_RESERVATION_POSITION_Y_HELP = '<y>'
+LAYOUT_ITEM_RESERVATION_SIZE_WIDTH = 'layout_item_reserved_size_width'
+LAYOUT_ITEM_RESERVATION_SIZE_WIDTH_HELP = '<width>'
+LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT = 'layout_item_reserved_size_height'
+LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT_HELP = '<height>'
+
 LAYOUT_ITEM_RESERVATION_NO = 'layout_item_reservation_no'
 LAYOUT_ITEM_RESERVATION_NO_HELP = '<empty>|<reservation_no_in_occupancy_map>'
 LAYOUT_ITEM_HEADERS = [
     LAYOUT_ITEM_IMAGE_FILEPATH,
-    LAYOUT_ITEM_SIZE_WIDTH,
-    LAYOUT_ITEM_SIZE_HEIGHT,
     LAYOUT_ITEM_POSITION_X,
     LAYOUT_ITEM_POSITION_Y,
+    LAYOUT_ITEM_SIZE_WIDTH,
+    LAYOUT_ITEM_SIZE_HEIGHT,
     LAYOUT_ITEM_ORIENTATION,
+    LAYOUT_ITEM_RESERVATION_POSITION_X,
+    LAYOUT_ITEM_RESERVATION_POSITION_Y,
+    LAYOUT_ITEM_RESERVATION_SIZE_WIDTH,
+    LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT,
     LAYOUT_ITEM_RESERVATION_NO
 ]
 LAYOUT_ITEM_HEADER_HELP = [
     LAYOUT_ITEM_IMAGE_FILEPATH_HELP,
-    LAYOUT_ITEM_SIZE_WIDTH_HELP,
-    LAYOUT_ITEM_SIZE_HEIGHT_HELP,
     LAYOUT_ITEM_POSITION_X_HELP,
     LAYOUT_ITEM_POSITION_Y_HELP,
+    LAYOUT_ITEM_SIZE_WIDTH_HELP,
+    LAYOUT_ITEM_SIZE_HEIGHT_HELP,
     LAYOUT_ITEM_ORIENTATION_HELP,
+    LAYOUT_ITEM_RESERVATION_POSITION_X_HELP,
+    LAYOUT_ITEM_RESERVATION_POSITION_Y_HELP,
+    LAYOUT_ITEM_RESERVATION_SIZE_WIDTH_HELP,
+    LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT_HELP,
     LAYOUT_ITEM_RESERVATION_NO_HELP
 ]
 
 LAYOUT_CSV_HEADERS = [
+    *LAYOUT_HEADERS,
     *LAYOUT_CANVAS_HEADERS,
     *LAYOUT_CONTOUR_HEADERS,
     *LAYOUT_ITEM_HEADERS,
 ]
 LAYOUT_CSV_HEADER_HELP = [
+    *LAYOUT_HEADERS_HELP,
     *LAYOUT_CANVAS_HEADER_HELP,
     *LAYOUT_CONTOUR_HEADER_HELP,
     *LAYOUT_ITEM_HEADER_HELP,

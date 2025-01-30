@@ -2,8 +2,7 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 from cpython cimport array 
-cdef extern from "stdio.h":
-    int printf(const char *format, ...)
+
 cdef struct BoxCoordinates:
     int left
     int upper
@@ -18,15 +17,14 @@ cdef struct Position:
     int left
     int upper
 
-cdef struct Point:
-    int x
-    int y
 
-def to_point(int x, int y):
-    cdef Point r
-    r.x = x
-    r.y = y
-    return r
+def is_size_too_wide(unsigned int[:,:] occupancy_map, int position_x, int width):
+    return occupancy_map.shape[0] <= (position_x + width)
+
+def is_size_too_tall(unsigned int[:,:] occupancy_map, int position_y, int height):
+    return occupancy_map.shape[1] <= (position_y + height)
+
+
 
 def to_box(Position position, Size size):
     cdef BoxCoordinates r
@@ -35,23 +33,6 @@ def to_box(Position position, Size size):
     r.right = position.left + size.width
     r.lower = position.upper + size.height
     return r
-
-def print_box(BoxCoordinates p):
-    cdef Position pp = get_position(p)
-    cdef Size sp = get_size(p)
-    printf("\tPosition(%d,%d) Size(%d,%d)\n", 
-        pp.left, pp.upper, sp.width, sp.height
-    )
-
-def print_box_change(BoxCoordinates f, BoxCoordinates t):
-    cdef Position pf = get_position(f)
-    cdef Size sf = get_size(f)
-    cdef Position pt = get_position(t)
-    cdef Size st = get_size(t)
-    printf("\tPosition(%d,%d) Size(%d,%d) -> Position(%d,%d) Size(%d,%d)\n", 
-        pf.left, pf.upper, sf.width, sf.height,
-        pt.left, pt.upper, st.width, st.height
-    )
 
 def to_position(int left, int upper):
     cdef Position r
@@ -65,39 +46,6 @@ def to_size(int width, int height):
     r.height = height
     return r
 
-def get_size(BoxCoordinates box):
-    return to_size(box.right - box.left, box.lower - box.upper)
-
-def get_position(BoxCoordinates box):
-    return to_position(box.left, box.upper)
-
-def get_upper_left_point(BoxCoordinates box):
-    cdef Point r
-    r.x = box.left
-    r.y = box.upper
-    return r
-
-def get_lower_right_point(BoxCoordinates box):
-    cdef Point r
-    r.x = box.right
-    r.y = box.lower
-    return r
-
-def points_to_box(Point upper_left, Point lower_right):
-    cdef BoxCoordinates r
-    r.left = upper_left.x
-    r.upper = upper_left.y
-    r.right = lower_right.x
-    r.lower = lower_right.y
-    return r
-
-
-def is_size_too_wide(unsigned int[:,:] occupancy_map, int position_x, int width):
-    return occupancy_map.shape[0] <= (position_x + width)
-
-def is_size_too_tall(unsigned int[:,:] occupancy_map, int position_y, int height):
-    return occupancy_map.shape[1] <= (position_y + height)
-
 def is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box):
     for x in range(box.left, box.right):
         for y in range(box.upper, box.lower):
@@ -105,8 +53,7 @@ def is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box):
             return False
     return True
 
-
-def find_free_position(unsigned int[:,:] occupancy_map, Size size, random_state):
+def find_free_box(unsigned int[:,:] occupancy_map, Size size, random_state):
     cdef Size scan_size = to_size(occupancy_map.shape[0], occupancy_map.shape[1])
     cdef Position pos = to_position(0,0)
     cdef BoxCoordinates box = to_box(pos,size)
@@ -131,5 +78,11 @@ def find_free_position(unsigned int[:,:] occupancy_map, Size size, random_state)
     # positions is an array of ints extended with position left and upper
     # we want to randomly pick the index of a position left
     chosen_position_left_index = random_state.randint(0, int(len(positions)/2) - 1 ) * 2
-    return to_position(positions[chosen_position_left_index], positions[chosen_position_left_index + 1])
+    return to_box(
+        to_position(
+            positions[chosen_position_left_index],
+            positions[chosen_position_left_index + 1]
+        ),
+        size
+    )
     

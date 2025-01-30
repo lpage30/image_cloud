@@ -37,18 +37,18 @@ class IntegralOccupancyMap(object):
         self._map_size = Size((map.shape[0], map.shape[1]))
         self._occupancy_map = map
 
-    def find_position(self, size: Size, random_state) -> None | Position:
-        result = native.find_free_position(self._occupancy_map, size.native, random_state)
-        return Position.from_native(result) if result is not None else result
+    def find_free_box(self, size: Size, random_state) -> BoxCoordinates | None:
+        result = native.find_free_box(self._occupancy_map, size.native, random_state)
+        return BoxCoordinates.from_native(result) if result is not None else result
 
-    def reserve(self, box: BoxCoordinates, reservation_no: int) -> None:
+    def reserve_box(self, box: BoxCoordinates, reservation_no: int) -> None:
         if reservation_no == 0:
             raise ValueError('reservation_number cannot be zero')
         for x in range(box.left, box.right):
             for y in range(box.upper, box.lower):
                 self.occupancy_map[x, y] = reservation_no
-        
-    def find_maximum_expanded_box(self, box: BoxCoordinates) -> BoxCoordinates | None:
+    
+    def find_expanded_box_versions(self, box: BoxCoordinates) -> list[BoxCoordinates] | None:
         possible_boxset: set[BoxCoordinates] = set()
         max_directions = max(Direction)
         for i in range(max_directions):
@@ -64,17 +64,15 @@ class IntegralOccupancyMap(object):
 
         possible_boxset.remove(box)
         possible_boxes = list(possible_boxset)
-        # maximum expanded box is the possible_box with largest area
-        possible_boxes.sort(key=lambda v: v.area, reverse=True)
         
-        return possible_boxes[0] if 0 < len(possible_boxes) else None
+        return possible_boxes if 0 < len(possible_boxes) else None
         
         
     @staticmethod
     def create_occupancy_map(map_size: Size, reservations: list[BoxCoordinates]) -> OccupancyMapType:
         integral = IntegralOccupancyMap(map_size)
         for i in range(len(reservations)):
-            integral.reserve(reservations[i], i + 1)
+            integral.reserve_box(reservations[i], i + 1)
         return integral.occupancy_map
 
     def _find_expanded_boxes(self, direction: Direction, boxes: list[BoxCoordinates]) -> list[BoxCoordinates]:

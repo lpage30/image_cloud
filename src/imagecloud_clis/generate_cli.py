@@ -48,7 +48,7 @@ from imagecloud.imagecloud_defaults import (
 from imagecloud.imagecloud import (
     ImageCloud
 )
-DEFAULT_MAXIMIZE_EMPTY_SPACE = True
+DEFAULT_MAXIMIZE_EMPTY_SPACE = False
 DEFAULT_SHOW = True
 DEFAULT_VERBOSE = False
 DEFAULT_CLOUD_EXPAND_STEP_SIZE = '0'

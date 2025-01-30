@@ -157,11 +157,7 @@ class ImageCloud(object):
     @property
     def layout(self) -> Layout | None:
         return self.layout_
-    
-    @layout.setter
-    def layout(self, v: Layout) -> None:
-        self.layout_ = v
-    
+        
     def generate(self,
                 weighted_images: list[WeightedImage],
                 max_image_size: Size | None = None,
@@ -235,26 +231,31 @@ class ImageCloud(object):
         occupancy.occupancy_map = layout.canvas.occupancy_map
         new_items: list[LayoutItem] = list()
         total_images = len(layout.items)
-        for i in range(total_images - 1, 0, -1):
+        for i in range(total_images - 1, -1, -1):
             item: LayoutItem = layout.items[i]
-            maximal_reservation = occupancy.find_maximum_expanded_box(item.reservation_box())
+            expanded_versions = occupancy.find_expanded_box_versions(item.reservation_box)
 
-            if maximal_reservation is None:
+            if expanded_versions is None:
                 new_items.append(item)
                 continue
+            # maximum expanded box is the possible_box with largest area
+            expanded_versions.sort(key=lambda v: v.area, reverse=True)
 
-            occupancy.reserve(maximal_reservation, item.reservation_no)
+            new_reservation_box = expanded_versions[0]
+            margin = 2 * (item.reservation_box.left - item.placement_box.left)
+            occupancy.reserve_box(new_reservation_box, item.reservation_no)
             new_items.append(
                 LayoutItem(
                     item.original_image,
-                    maximal_reservation.size,
-                    maximal_reservation.position,
+                    new_reservation_box.remove_margin(margin),
                     item.orientation,
+                    new_reservation_box,
                     item.reservation_no
                 )
             )
             if self._logger:
-                self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}'.format((total_images - i), total_images, item.name, str(item.reservation_box()), str(maximal_reservation)))
+                self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}'.format(
+                    (total_images - i), total_images, item.name, str(item.reservation_box), str(new_reservation_box)))
                 
 
         new_items.reverse()
@@ -307,10 +308,7 @@ class ImageCloud(object):
         
         occupancy = IntegralOccupancyMap(imagecloud_size)
 
-        images: list[NamedImage] = []
-        image_sizes: list[Size] = []
-        positions: list[Position] = []
-        orientations: list[Image.Transpose | None] = []
+        layout_items: list[LayoutItem] = list()
 
         if max_image_size is None:
             # if not provided use default max_size
@@ -330,7 +328,7 @@ class ImageCloud(object):
                     self._size
                 )
                 # find image sizes
-                sizes = [x.size for x in layout.items]
+                sizes = [x.placement_box.size for x in layout.items]
             
             if 0 == len(sizes):
                 raise ValueError(
@@ -415,13 +413,23 @@ class ImageCloud(object):
                     ))
                 
                 # find a free position to occupy                
-                paste_position = occupancy.find_position(
+                reservation = occupancy.find_free_box(
                     new_image_size.adjust(self._margin, False),
                     random_state
                 )
-                if paste_position is not None:
-                    # Found a place
+                if reservation is not None:
+                    # reserve found a place
+                    reservation_no = index + 1
+                    occupancy.reserve_box(reservation, reservation_no)
+                    layout_items.append(LayoutItem(
+                        proportional_images[index],
+                        reservation.remove_margin(self._margin),
+                        orientation,
+                        reservation,
+                        reservation_no
+                    ))
                     break
+
                 if rotate: # try resizing before rotating again
                     new_image_size = new_image_size.untranspose(orientation)
                     new_image_size = shrink_size_by_step(new_image_size, self.image_step, self.maintain_aspect_ratio)
@@ -437,28 +445,9 @@ class ImageCloud(object):
                 if self._logger:
                     self._logger.info('Dropping Image. resized too small')
                 break
-            paste_position = paste_position.adjust(self._margin //2)
-
-            images.append(proportional_images[index])
-            image_sizes.append(new_image_size)
-            positions.append(paste_position)
-            orientations.append(orientation)
-            
-            occupancy.reserve(BoxCoordinates(paste_position, new_image_size), index + 1)
 
         if self._logger:
             self._logger.pop_indent()
-        items: list[LayoutItem] = list()
-        for i in range(len(images)):
-            items.append(
-                LayoutItem(
-                    images[i],
-                    image_sizes[i],
-                    positions[i],
-                    orientations[i],
-                    i + 1
-                )
-            )
         self.layout_ = Layout(
             LayoutCanvas(
                 imagecloud_size,
@@ -471,7 +460,14 @@ class ImageCloud(object):
                 self._contour_width,
                 self._contour_color
             ),
-            items
+            layout_items,
+            self._max_images,
+            self._min_image_size,
+            self._image_step,
+            self._maintain_aspect_ratio,
+            self._scale,
+            self._prefer_horizontal,
+            self._margin
         )
         return self.layout_
 
@@ -496,7 +492,7 @@ class ImageCloud(object):
         return boolean_mask
 
     @staticmethod
-    def wrap_layout(
+    def create(
         layout: Layout,
         logger: ConsoleLogger | None = None
     ):
@@ -504,18 +500,18 @@ class ImageCloud(object):
             layout.contour.mask,
             layout.canvas.size,
             layout.canvas.background_color,
+            layout.max_images,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            layout.min_image_size,
+            layout.image_step,
+            layout.maintain_aspect_ratio,
+            layout.scale,
             layout.contour.width,
             layout.contour.color,
-            None,
-            None,
+            layout.prefer_horizontal,
+            layout.margin,
             layout.canvas.mode,
             logger
         )
-        result.layout = layout
+        result.layout_ = layout
         return result

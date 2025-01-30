@@ -175,6 +175,12 @@ class BoxCoordinates:
     def area(self) -> int:
         return self.size.area
     
+    def scale(self, scale: float):
+        return BoxCoordinates(
+            self.position.scale(scale),
+            self.size.scale(scale)
+        )
+    
     def __eq__(self, other):
         return self.left == other.left and self.upper == other.upper and self.right == other.right and self.lower == other.lower
 
@@ -183,6 +189,20 @@ class BoxCoordinates:
     
     def __str__(self):
         return f"({self.left},{self.upper},{self.right},{self.lower})"
+
+    def add_margin(self, margin: int):
+        padding: int = margin //2
+        return BoxCoordinates(
+            self.position.adjust(-padding),
+            self.size.adjust(padding, False)
+        )
+    
+    def remove_margin(self, margin: int):
+        padding: int = margin //2
+        return BoxCoordinates(
+            self.position.adjust(padding),
+            self.size.adjust(-padding, False)
+        )
 
     @property
     def native(self):
