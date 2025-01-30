@@ -237,19 +237,24 @@ class ImageCloud(object):
         total_images = len(layout.items)
         for i in range(total_images - 1, 0, -1):
             item: LayoutItem = layout.items[i]
-            new_reservation = occupancy.expand_occupancy(item.reservation_box())
-            occupancy.reserve(new_reservation, item.reservation_no)
+            maximal_reservation = occupancy.find_maximum_expanded_box(item.reservation_box())
+
+            if maximal_reservation is None:
+                new_items.append(item)
+                continue
+
+            occupancy.reserve(maximal_reservation, item.reservation_no)
             new_items.append(
                 LayoutItem(
                     item.original_image,
-                    new_reservation.size,
-                    new_reservation.position,
+                    maximal_reservation.size,
+                    maximal_reservation.position,
                     item.orientation,
                     item.reservation_no
                 )
             )
-            if not(item.reservation_box().equal(new_reservation)) and self._logger:
-                self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}}'.format((total_images - i), total_images, item.name, str(item.reservation_box()), str(new_reservation)))
+            if self._logger:
+                self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}'.format((total_images - i), total_images, item.name, str(item.reservation_box()), str(maximal_reservation)))
                 
 
         new_items.reverse()
@@ -257,7 +262,7 @@ class ImageCloud(object):
             LayoutCanvas(
                 layout.canvas.size,
                 layout.canvas.mode,
-                self.background_color,
+                layout.canvas.background_color,
                 occupancy.occupancy_map
             ),
             LayoutContour(

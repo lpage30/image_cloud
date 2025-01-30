@@ -35,7 +35,24 @@ def to_box(Position position, Size size):
     r.right = position.left + size.width
     r.lower = position.upper + size.height
     return r
-    
+
+def print_box(BoxCoordinates p):
+    cdef Position pp = get_position(p)
+    cdef Size sp = get_size(p)
+    printf("\tPosition(%d,%d) Size(%d,%d)\n", 
+        pp.left, pp.upper, sp.width, sp.height
+    )
+
+def print_box_change(BoxCoordinates f, BoxCoordinates t):
+    cdef Position pf = get_position(f)
+    cdef Size sf = get_size(f)
+    cdef Position pt = get_position(t)
+    cdef Size st = get_size(t)
+    printf("\tPosition(%d,%d) Size(%d,%d) -> Position(%d,%d) Size(%d,%d)\n", 
+        pf.left, pf.upper, sf.width, sf.height,
+        pt.left, pt.upper, st.width, st.height
+    )
+
 def to_position(int left, int upper):
     cdef Position r
     r.left = left
@@ -82,7 +99,6 @@ def is_size_too_tall(unsigned int[:,:] occupancy_map, int position_y, int height
     return occupancy_map.shape[1] <= (position_y + height)
 
 def is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box):
-    cdef total = 0
     for x in range(box.left, box.right):
         for y in range(box.upper, box.lower):
           if occupancy_map[x, y] != 0:
@@ -116,47 +132,4 @@ def find_free_position(unsigned int[:,:] occupancy_map, Size size, random_state)
     # we want to randomly pick the index of a position left
     chosen_position_left_index = random_state.randint(0, int(len(positions)/2) - 1 ) * 2
     return to_position(positions[chosen_position_left_index], positions[chosen_position_left_index + 1])
-
-def reserve_position(unsigned int[:,:] occupancy_map, BoxCoordinates box, int reservation_no):
-    for x in range(box.left, box.right):
-        for y in range(box.upper, box.lower):
-            occupancy_map[x, y] = reservation_no
-
-
-def expand_upper_left(unsigned int[:,:] occupancy_map, BoxCoordinates box):
-    # expand box to upper left until no more freespace or cannot find_free_position
-    cdef Point lower_right = get_lower_right_point(box)
-    cdef BoxCoordinates new_box = box
-    cdef BoxCoordinates result = box
-    for x in range(box.left, 0, -1): # expand top left
-        for y in range(box.upper, 0, -1): # expand top up
-            new_box = points_to_box(to_point(x, y), lower_right)
-            if is_free_position(occupancy_map, new_box):
-                result = new_box
-            else:
-                return result
-
-    return result
-
-def expand_lower_right(unsigned int[:,:] occupancy_map, BoxCoordinates box):
-    # expand box to upper left until no more freespace or cannot find_free_position
-    cdef Size scan_size = to_size(occupancy_map.shape[0], occupancy_map.shape[1])
-    cdef Point upper_left = get_lower_right_point(box)
-    cdef BoxCoordinates new_box = box
-    cdef BoxCoordinates result = box
-    for x in range(box.right, scan_size.width): # expand bottom right
-        for y in range(box.lower, scan_size.height): # expand bottom down
-            new_box = points_to_box(upper_left, to_point(x, y))
-            if is_free_position(occupancy_map, new_box):
-                result = new_box
-            else:
-                return result
-
-    return result
-
-def expand_occupancy(unsigned int[:,:] occupancy_map, BoxCoordinates box):
-    cdef BoxCoordinates result = box
-    result = expand_upper_left(occupancy_map,box)
-    result = expand_lower_right(occupancy_map,result)
-    return result
     

@@ -1,16 +1,32 @@
 from PIL import Image
 import imagecloud.native_integral_occupancy_functions as native
+class Point:
+    x: int
+    y: int
+    def __init__(self, point: tuple[int, int]) -> None:
+        self.x = point[0]
+        self.y = point[1]
+        
+    @property
+    def tuple(self) -> tuple[int, int]:
+        return (self.x, self.y)
 
-class Position:
+    def width(self, other) -> int:
+        return self.x - other.x
+
+    def height(self, other) -> int:
+        return self.y - other.y
+
+    def __str__(self):
+        return f"({self.x},{self.y})"
+
+class Position(Point):
     left: int
     upper: int
     def __init__(self, position: tuple[int, int]) -> None:
+        super().__init__(position)
         self.left = position[0]
         self.upper = position[1]
-
-    @property
-    def tuple(self) -> tuple[int, int]:
-        return (self.left, self.upper)
     
     @property
     def native(self):
@@ -30,9 +46,6 @@ class Position:
         else:
             return Position(((self.left - step), (self.upper - step)))
 
-    def __str__(self):
-        return f"({self.left},{self.upper})"
-        
     @staticmethod
     def from_native(native_pos):
         return Position((native_pos['left'], native_pos['upper']))
@@ -147,8 +160,26 @@ class BoxCoordinates:
         return Position((self.left, self.upper))
     
     @property
+    def upper_left(self) -> Point:
+        return Point((self.left, self.upper))
+    
+    @property
+    def lower_right(self) -> Point:
+        return Point((self.right, self.lower))
+    
+    @property
     def size(self) -> Size:
         return Size((self.right - self.left, self.lower - self.upper))
+    
+    @property
+    def area(self) -> int:
+        return self.size.area
+    
+    def __eq__(self, other):
+        return self.left == other.left and self.upper == other.upper and self.right == other.right and self.lower == other.lower
+
+    def __hash__(self):
+        return hash(self.tuple)    
     
     def __str__(self):
         return f"({self.left},{self.upper},{self.right},{self.lower})"
@@ -160,3 +191,10 @@ class BoxCoordinates:
     @staticmethod
     def from_native(native_box):
         return BoxCoordinates(Position.from_native_box(native_box), Size.from_native_box(native_box))
+    
+    @staticmethod
+    def from_points(upper_left: Point, lower_right: Point):
+        return BoxCoordinates(
+            Position(upper_left.tuple),
+            Size((lower_right.width(upper_left), lower_right.height(upper_left)))
+        )
