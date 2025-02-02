@@ -1,14 +1,12 @@
 #!/bin/bash
-generated_layout_csv=/Users/$USER/imagecloud/li/imagecloud_layout.csv
-image_cloud_png=/Users/$USER/imagecloud/li/li_imagecloud.maximized.png
-reservation_chart=/Users/$USER/imagecloud/li/li_imagecloud.reservationchart.png
+input_csv=/Users/$USER/imagecloud/li/imagecloud_layout.csv
+output_directory=/Users/$USER/imagecloud/li
 image_type=png
 
 layout_imagecloud \
-    -i $generated_layout_csv \
-    -save_imagecloud_filepath $image_cloud_png \
-    -save_reservation_chart_filepath $reservation_chart\
-    -save_imagecloud_format $image_type \
+    -i $input_csv \
+    -output_directory $output_directory \
+    -output_image_format $image_type \
     -maximize_empty_space \
     -show_imagecloud \
     -show_imagecloud_reservation_chart

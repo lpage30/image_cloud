@@ -1,21 +1,19 @@
 #!/bin/bash
-image_weights_csv=/Users/$USER/imagecloud/imagecloud-import.csv
-image_cloud_png=/Users/$USER/imagecloud/li/li_imagecloud.png
-layout_dir=/Users/$USER/imagecloud/li
+input_csv=/Users/$USER/imagecloud/imagecloud-import.csv
+output_directory=/Users/$USER/imagecloud/li
 image_type=png
 
 linkedin_background_size="2814,705"
 reasonable_smallest_size="50,50"
-if [ ! -d "$layout_dir" ]; then
-    mkdir -p $layout_dir
+if [ ! -d "$output_directory" ]; then
+    mkdir -p $output_directory
 fi
 
 generate_imagecloud \
-    -i $image_weights_csv \
-    -output_image_filepath $image_cloud_png \
-    -output_layout_dirpath $layout_dir \
+    -i $input_csv \
+    -output_directory $output_directory \
     -output_image_format $image_type \
     -cloud_size $linkedin_background_size \
     -min_image_size $reasonable_smallest_size \
     -maintain_aspect_ratio \
-    -show
+    -show_imagecloud

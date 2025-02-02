@@ -70,7 +70,6 @@ cdef sample_to_find_free_box(
     int margin,
     int maintain_aspect_ratio, # false(0)/true(non-zero),
     int step_size,
-    float prefer_horizontal,
     random_state
 ):
     cdef int sampling_count = 0
@@ -80,9 +79,6 @@ cdef sample_to_find_free_box(
     cdef Transpose orientation = Transpose.NONE
     cdef BoxCoordinates reservation_box
     cdef SamplingResult result
-
-    if prefer_horizontal <= random_state.random():
-        rotate = 1
 
     while True:
         sampling_count += 1
@@ -122,7 +118,6 @@ def py_sample_to_find_free_box(
     int margin,
     int maintain_aspect_ratio, # false(0)/true(non-zero),
     int step_size,
-    float prefer_horizontal,
     random_state
 ):
     return sample_to_find_free_box(
@@ -132,6 +127,5 @@ def py_sample_to_find_free_box(
         margin,
         maintain_aspect_ratio,
         step_size,
-        prefer_horizontal,
         random_state
     )

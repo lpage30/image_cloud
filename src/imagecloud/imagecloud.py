@@ -15,7 +15,6 @@ from imagecloud.weighted_image import (
     sort_by_weight,
     resize_images_to_proportionally_fit,
     grow_size_by_step,
-    shrink_size_by_step,
 )
 from imagecloud.integral_occupancy_map import IntegralOccupancyMap, SamplingResult
 import imagecloud.imagecloud_defaults as helper
@@ -73,13 +72,7 @@ class ImageCloud(object):
     
     contour_color: color value (default=helper.DEFAULT_CONTOUR_COLOR)
         Mask contour color.
-    
-    prefer_horizontal : float (default=helper.DEFAULT_PREFER_HORIZONTAL)
-        The ratio of times to try horizontal fitting as opposed to vertical.
-        If prefer_horizontal < 1, the algorithm will try rotating the word
-        if it doesn't fit. (There is currently no built-in way to get only
-        vertical words.)
-        
+            
     margin: int (default=helper.DEFAULT_MARGIN)
         The gap to allow between images
     
@@ -99,10 +92,10 @@ class ImageCloud(object):
                  scale: float | None = None,
                  contour_width: float | None = None,
                  contour_color: str | None = None,
-                 prefer_horizontal: float | None = None,
                  margin: int | None = None,
                  mode: str | None = None,
-                 logger: ConsoleLogger | None = None
+                 logger: ConsoleLogger | None = None,
+                 name: str | None = None
     ) -> None:
         self._mask: np.ndarray | None = np.array(mask) if mask is not None else None
         self._size = size if size is not None else parse_to_size(helper.DEFAULT_CLOUD_SIZE)
@@ -117,10 +110,10 @@ class ImageCloud(object):
         self._contour_color = contour_color if contour_color is not None else helper.DEFAULT_CONTOUR_COLOR
         self._logger = logger
 
-        self._prefer_horizontal = prefer_horizontal if prefer_horizontal is not None else parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
         self._margin = margin if margin is not None else parse_to_int(helper.DEFAULT_MARGIN)
         self._mode = mode if mode is not None else helper.DEFAULT_MODE
         self._random_state = None
+        self._name = name if name is not None else 'imagecloud'
         self.layout_: Layout | None = None
 
     @property
@@ -197,21 +190,19 @@ class ImageCloud(object):
                     self.maintain_aspect_ratio
                 )
                 if self._logger:
-                    self._logger.stop_buffering(False)
-                    if 1 < resize_count:
-                        self._logger.pop_indent()
+                    if 1 == resize_count:
+                        self._logger.info('Expanding ImageCloud to fit {0} remaining images.'.format(len(weighted_images) - len(result.items)))
+                        self._logger.push_indent('Expanding ImageCloud')
                     if 0 == (resize_count - 1) % 10:
                         self._logger.info('{0}/{1} images fit. Expanding ImageCloud [{2}] ({3},{4}) -> ({5},{6}) to fit more ...'.format(
                             len(result.items),len(weighted_images), resize_count,
                             self.size[0], self.size[1],
                             imagecloud_size[0], imagecloud_size[1]
                         ))
-                    self._logger.push_indent('resize-{0}-{1}-more-images'.format(resize_count, len(weighted_images) - len(result.items)))
-                    self._logger.start_buffering()
                 continue
             break
+
         if self._logger:
-            self._logger.stop_buffering(True)
             self._logger = self._logger.copy()
 
         return result
@@ -226,9 +217,15 @@ class ImageCloud(object):
         occupancy.occupancy_map = layout.canvas.occupancy_map
         new_items: list[LayoutItem] = list()
         total_images = len(layout.items)
+        if self._logger:
+            self._logger.info('Maximizing ImageCloud empty-space around  {0} images'.format(total_images))
+            self._logger.push_indent('maximizing-empty-space')
+
         for i in range(total_images - 1, -1, -1):
             item: LayoutItem = layout.items[i]
             expanded_versions = occupancy.find_expanded_box_versions(item.reservation_box)
+            if self._logger:
+                self._logger.push_indent('Image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
 
             if expanded_versions is None:
                 new_items.append(item)
@@ -251,6 +248,7 @@ class ImageCloud(object):
             if self._logger:
                 self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}'.format(
                     (total_images - i), total_images, item.name, str(item.reservation_box), str(new_reservation_box)))
+                self._logger.pop_indent()
                 
 
         new_items.reverse()
@@ -259,7 +257,8 @@ class ImageCloud(object):
                 layout.canvas.size,
                 layout.canvas.mode,
                 layout.canvas.background_color,
-                occupancy.occupancy_map
+                occupancy.occupancy_map,
+                layout.canvas.name + '.maximized'
             ),
             LayoutContour(
                 layout.contour.mask,
@@ -268,27 +267,10 @@ class ImageCloud(object):
             ),
             new_items
         )
+        if self._logger:
+            self._logger = self._logger.copy()
+
         return self.layout_
-
-    def to_image(
-        self
-    ) -> Image.Image:
-        self._check_generated()
-        return self.layout_.to_image(
-            self._scale,
-            self._logger
-        ).image
-
-
-    def to_array(self) -> np.ndarray:
-        """Convert to numpy array.
-
-        Returns
-        -------
-        image : nd-array size (width, height, 3)
-            Word cloud image as numpy matrix.
-        """
-        return np.array(self.to_image())
 
     def _generate(self,
                 proportional_images: list[WeightedImage],
@@ -345,18 +327,18 @@ class ImageCloud(object):
             image = proportional_images[index].image
             name = proportional_images[index].name
             if self._logger:
-                if 0 < index:
-                    self._logger.pop_indent()
                 self._logger.push_indent('Image-{0}[{1}/{2}]'.format(name, index + 1, total))
+
             if weight == 0:
                 if self._logger:
                     self._logger.info('Dropping 0 weight'.format(
                         index+1, total, name
                     ))
+                    self._logger.pop_indent()
                 continue
 
             if self._logger:
-                self._logger.info('finding position in ImageCloud')
+                self._logger.info('Finding position in ImageCloud')
             
             sampling_result: SamplingResult = occupancy.sample_to_find_free_box(
                 Size(image.size),
@@ -364,7 +346,6 @@ class ImageCloud(object):
                 self._margin,
                 self._maintain_aspect_ratio,
                 self._image_step,
-                self._prefer_horizontal,
                 random_state
             )
             if sampling_result.found_reservation:
@@ -394,15 +375,13 @@ class ImageCloud(object):
             if self._logger:
                 self._logger.pop_indent()
 
-        if self._logger:
-            self._logger.pop_indent()
-
         self.layout_ = Layout(
             LayoutCanvas(
                 imagecloud_size,
                 self._mode,
                 self._background_color,
-                occupancy.occupancy_map
+                occupancy.occupancy_map,
+                self._name
             ),
             LayoutContour(
                 self._get_boolean_mask(self._mask) * 255 if self._mask is not None else None,
@@ -415,7 +394,6 @@ class ImageCloud(object):
             self._image_step,
             self._maintain_aspect_ratio,
             self._scale,
-            self._prefer_horizontal,
             self._margin
         )
         return self.layout_
@@ -457,10 +435,10 @@ class ImageCloud(object):
             layout.scale,
             layout.contour.width,
             layout.contour.color,
-            layout.prefer_horizontal,
             layout.margin,
             layout.canvas.mode,
-            logger
+            logger,
+            layout.canvas.name
         )
         result.layout_ = layout
         return result

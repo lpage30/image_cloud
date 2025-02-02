@@ -6,6 +6,7 @@ from imagecloud.imagecloud_helpers import (
     parse_to_int,
     parse_to_float,
     parse_to_size,
+    to_unused_filepath,
 )
 
 
@@ -48,14 +49,12 @@ def is_size(parser: argparse.ArgumentParser, value: str) -> Size:
         return parse_to_size(value)
     except Exception as e:
         parser.error(str(e))
-        
-def to_unused_filepath(filepath: str, new_suffix: str | None = None) -> str:
-    filepath_parts = filepath.split('.')
-    filepath_prefix = '.'.join(filepath_parts[:-1])
-    suffix = new_suffix if new_suffix is not None else filepath_parts[-1]
-    result = '{0}.{1}'.format(filepath_prefix, suffix)
-    version: int = 0
-    while os.path.isfile(result):
-        version += 1
-        result = '{0}.{1}.{2}'.format(filepath_prefix, version, suffix)
-    return result
+
+def to_name(input_filepath: str, output_file_suffix: str, existing_name: str | None, output_directory: str | None):
+    name = existing_name if existing_name is not None else os.path.splitext(os.path.basename(input_filepath))[0]
+    if output_directory is not None:
+        name = os.path.splitext(os.path.basename(
+            to_unused_filepath(output_directory, name, output_file_suffix)
+        ))[0]
+    return name
+

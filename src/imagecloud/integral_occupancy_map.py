@@ -48,7 +48,7 @@ class SamplingResult(object):
             )
         else:
             return  SamplingResult(
-                True,
+                False,
                 native_samplingresult['sampling_total'],
                 Size.from_native(native_samplingresult['new_size']),
             )
@@ -85,7 +85,6 @@ class IntegralOccupancyMap(object):
         margin: int,
         maintain_aspect_ratio: bool,
         step_size: int,
-        prefer_horizontal: float,
         random_state
     ) -> SamplingResult:
      
@@ -97,7 +96,6 @@ class IntegralOccupancyMap(object):
                 margin,
                 1 if maintain_aspect_ratio else 0,
                 step_size,
-                prefer_horizontal,
                 random_state,
             )
         )

@@ -66,6 +66,10 @@ class LayoutCanvas:
     @property
     def name(self) -> str:
         return self._name
+
+    @name.setter
+    def name(self, v: str) -> None:
+        self._name = v
     
     @property
     def size(self) -> Size:
@@ -106,10 +110,10 @@ class LayoutCanvas:
             for y in range(self.occupancy_map.shape[1]):
                 pixels[x, y] = int(self.occupancy_map[x,y])
         
-        return NamedImage(image, '{0}.occupancy_map.png'.format(self.name))
+        return NamedImage(image, '{0}.occupancy_map'.format(self.name))
     
     def write(self, layout_directory: str) -> Dict[str,Any]:
-        occupancy_csv_filepath = to_unused_filepath(os.path.join(layout_directory, 'layout_canvas_occupancy_map.csv'))
+        occupancy_csv_filepath = to_unused_filepath(layout_directory, '{0}.occupancy_map'.format(self.name), 'csv')
         np.savetxt(
             fname=occupancy_csv_filepath,
             X=self._occupancy_map,
@@ -201,10 +205,10 @@ class LayoutContour:
             image.name
         )
 
-    def write(self, layout_directory: str) -> Dict[str,Any]:
+    def write(self, layout_name: str, layout_directory: str) -> Dict[str,Any]:
         mask_filepath = ''
         if self.mask is not None:
-            mask_filepath = to_unused_filepath(os.path.join(layout_directory, 'layout_contour_mask.png'))
+            mask_filepath = to_unused_filepath(layout_directory, '{0}.contour_mask'.format(layout_name), 'png')
             Image.fromarray(self.mask).save(mask_filepath)
 
         return {     
@@ -310,8 +314,8 @@ class LayoutItem:
         )
 
     def write(self, layout_directory: str) -> Dict[str,Any]:
-        image_filepath = to_unused_filepath(os.path.join(layout_directory, '{0}.png'.format(self.original_image.name)))
-        self.original_image.image.save(image_filepath)
+        image_filepath = to_unused_filepath(layout_directory, self.original_image.name, 'png')
+        self.original_image.image.save(image_filepath, 'png')
         
         return {
             LAYOUT_ITEM_IMAGE_FILEPATH: image_filepath,
@@ -373,7 +377,6 @@ class Layout:
         image_step: int | None = None,
         maintain_aspect_ratio: bool | None = None,
         scale: float | None = None,
-        prefer_horizontal: float | None = None,
         margin: int | None = None,
         
     ) -> None:
@@ -389,9 +392,16 @@ class Layout:
         self.maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio is not None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
         self.scale = scale if scale is not None else parse_to_float(helper.DEFAULT_SCALE)
 
-        self.prefer_horizontal = prefer_horizontal if prefer_horizontal is not None else parse_to_float(helper.DEFAULT_PREFER_HORIZONTAL)
         self.margin = margin if margin is not None else parse_to_int(helper.DEFAULT_MARGIN)
     
+    @property
+    def name(self) -> str:
+        return self.canvas.name
+
+    @name.setter
+    def name(self, v: str) -> None:
+        self.canvas.name = v
+
     @property
     def canvas(self) -> LayoutCanvas:
         return self._canvas
@@ -473,7 +483,6 @@ class Layout:
             LAYOUT_IMAGE_STEP: self.image_step,
             LAYOUT_MAINTAIN_ASPECT_RATIO: self.maintain_aspect_ratio,
             LAYOUT_SCALE: self.scale,
-            LAYOUT_PREFER_HORIZONTAL: self.prefer_horizontal,
             LAYOUT_MARGIN: self.margin
         }
         with open(csv_filepath, 'w') as file:
@@ -483,7 +492,7 @@ class Layout:
                 csv_writer.writerow({
                     **(layout_data if i == 0 else { header:'' for header in LAYOUT_HEADERS }),
                     **(self.canvas.write(layout_directory) if i == 0 else LayoutCanvas.empty_csv_data()),
-                    **(self.contour.write(layout_directory) if i == 0 else LayoutContour.empty_csv_data()),
+                    **(self.contour.write(self.name, layout_directory) if i == 0 else LayoutContour.empty_csv_data()),
                     **(self.items[i].write(layout_directory))
                 })
                 
@@ -522,9 +531,8 @@ class Layout:
             image_step = int(layout_data[LAYOUT_IMAGE_STEP]) if LAYOUT_IMAGE_STEP in layout_data else None
             maintain_aspect_ratio = layout_data[LAYOUT_MAINTAIN_ASPECT_RATIO].lower() in ['true', 'yes', '1'] if LAYOUT_MAINTAIN_ASPECT_RATIO in layout_data else None
             scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
-            prefer_horizontal = float(layout_data[LAYOUT_PREFER_HORIZONTAL]) if LAYOUT_PREFER_HORIZONTAL in layout_data else None
             margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None        
-            return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, prefer_horizontal, margin)
+            return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, margin)
         except Exception as e:
             raise Exception(str(e))
 
@@ -540,8 +548,6 @@ LAYOUT_MAINTAIN_ASPECT_RATIO = 'layout_maintain_aspect_ratio'
 LAYOUT_MAINTAIN_ASPECT_RATIO_HELP = 'True|False'
 LAYOUT_SCALE = 'layout_scale'
 LAYOUT_SCALE_HELP = '<float>'
-LAYOUT_PREFER_HORIZONTAL = 'layout_margin_prefer_horizontal'
-LAYOUT_PREFER_HORIZONTAL_HELP = '<float>'
 LAYOUT_MARGIN = 'layout_margin'
 LAYOUT_MARGIN_HELP = '<image-margin>'
 LAYOUT_HEADERS = [
@@ -551,7 +557,6 @@ LAYOUT_HEADERS = [
     LAYOUT_IMAGE_STEP,
     LAYOUT_MAINTAIN_ASPECT_RATIO,
     LAYOUT_SCALE,
-    LAYOUT_PREFER_HORIZONTAL,
     LAYOUT_MARGIN
 ]
 LAYOUT_HEADERS_HELP = [
@@ -561,7 +566,6 @@ LAYOUT_HEADERS_HELP = [
     LAYOUT_IMAGE_STEP_HELP,
     LAYOUT_MAINTAIN_ASPECT_RATIO_HELP,
     LAYOUT_SCALE_HELP,
-    LAYOUT_PREFER_HORIZONTAL_HELP,
     LAYOUT_MARGIN_HELP
 ]
 LAYOUT_CANVAS_SIZE_WIDTH = 'layout_canvas_size_width'

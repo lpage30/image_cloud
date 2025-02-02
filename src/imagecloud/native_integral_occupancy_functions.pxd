@@ -27,6 +27,5 @@ cdef sample_to_find_free_box(
     int margin,
     int maintain_aspect_ratio, # false(0)/true(non-zero),
     int step_size,
-    float prefer_horizontal,
     random_state
 )

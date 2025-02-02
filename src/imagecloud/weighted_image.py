@@ -25,6 +25,9 @@ class NamedImage(object):
     def original_named_image(self):
         return NamedImage(self._original_image, self.name)
     
+    def show(self) -> None:
+        self.image.show(self.name)
+
     @staticmethod
     def load(image_filepath: str):
         name = os.path.splitext(os.path.basename(image_filepath))[0]
