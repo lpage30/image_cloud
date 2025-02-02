@@ -1,11 +1,11 @@
 import numpy as np
 from enum import IntEnum
 from imagecloud.position_box_size import (
-    Size,
     Point,
-    Position,
+    Size,
     BoxCoordinates
 )
+from PIL import Image
 import imagecloud.native_integral_occupancy_functions as native
 
 
@@ -16,6 +16,43 @@ class Direction(IntEnum):
     LEFT = 2
     DOWN = 3
     RIGHT = 4
+
+class SamplingResult(object):
+    
+    def __init__(
+        self, 
+        found_reservation: bool,
+        sampling_total: int,
+        new_size: Size,
+        reservation_box: BoxCoordinates | None = None,
+        actual_box: BoxCoordinates | None = None,
+        orientation: Image.Transpose | None = None
+    ):
+        self.found_reservation = found_reservation
+        self.sampling_total = sampling_total
+        self.new_size = new_size
+        self.reservation_box = reservation_box
+        self.actual_box = actual_box
+        self.orientation = orientation
+    
+    @staticmethod
+    def from_native(native_samplingresult):
+        if 0 != native_samplingresult['found_reservation']:
+            return  SamplingResult(
+                True,
+                native_samplingresult['sampling_total'],
+                Size.from_native(native_samplingresult['new_size']),
+                BoxCoordinates.from_native(native_samplingresult['reservation_box']),
+                BoxCoordinates.from_native(native_samplingresult['actual_box']),
+                Image.Transpose(native_samplingresult['orientation']) if 0 <= native_samplingresult['orientation'] else None
+            )
+        else:
+            return  SamplingResult(
+                True,
+                native_samplingresult['sampling_total'],
+                Size.from_native(native_samplingresult['new_size']),
+            )
+
 
 # extrapolated from https://github.com/amueller/word_cloud/blob/main/wordcloud/wordcloud.py
 class IntegralOccupancyMap(object):
@@ -38,9 +75,33 @@ class IntegralOccupancyMap(object):
         self._occupancy_map = map
 
     def find_free_box(self, size: Size, random_state) -> BoxCoordinates | None:
-        result = native.find_free_box(self._occupancy_map, size.native, random_state)
+        result = native.py_find_free_box(self._occupancy_map, Size.to_native(size), random_state)
         return BoxCoordinates.from_native(result) if result is not None else result
 
+    def sample_to_find_free_box(
+        self, 
+        size: Size,
+        min_size: Size,
+        margin: int,
+        maintain_aspect_ratio: bool,
+        step_size: int,
+        prefer_horizontal: float,
+        random_state
+    ) -> SamplingResult:
+     
+        return SamplingResult.from_native(
+            native.py_sample_to_find_free_box(
+                self._occupancy_map,
+                Size.to_native(size),
+                Size.to_native(min_size),
+                margin,
+                1 if maintain_aspect_ratio else 0,
+                step_size,
+                prefer_horizontal,
+                random_state,
+            )
+        )
+    
     def reserve_box(self, box: BoxCoordinates, reservation_no: int) -> None:
         if reservation_no == 0:
             raise ValueError('reservation_number cannot be zero')
@@ -143,4 +204,4 @@ class IntegralOccupancyMap(object):
         return result
 
     def _is_free_position(self, box: BoxCoordinates) -> bool:
-        return native.is_free_position(self.occupancy_map, box.native)
+        return native.py_is_free_position(self.occupancy_map, BoxCoordinates.to_native(box))

@@ -1,6 +1,7 @@
 from imagecloud.console_logger import ConsoleLogger
 import argparse
 import sys
+import os
 import imagecloud_clis.cli_helpers as cli_helpers
 
 from imagecloud.layout import (
@@ -22,6 +23,7 @@ DEFAULT_SHOW_IMAGECLOUD = False
 DEFAULT_SHOW_IMAGECLOUD_RESERVATION_CHART = False
 
 class ImageCloudLayoutArguments:
+    name = 'layout_imagecloud'
     def __init__ (
         self, 
         input: str,
@@ -48,7 +50,7 @@ class ImageCloudLayoutArguments:
     def parse(arguments: list[str]):
         parser = argparse.ArgumentParser(
             formatter_class=argparse.RawTextHelpFormatter,
-            prog='layout_imagecloud',
+            prog=ImageCloudLayoutArguments.name,
             description='''
             Layout and show a generated \'ImageCloud\' from its layout csv file
             '''
@@ -155,8 +157,11 @@ class ImageCloudLayoutArguments:
 
 
 def layout(args: ImageCloudLayoutArguments | None = None) -> None:
+    sys_args = sys.argv[1:]
+    print('{0} {1}'.format(ImageCloudLayoutArguments.name, ' '.join(sys_args)))
+    
     if args == None:
-        args = ImageCloudLayoutArguments.parse(sys.argv[1:])
+        args = ImageCloudLayoutArguments.parse(sys_args)
 
     print('loading {0} ...'.format(args.input))
     layout = Layout.load(args.input)

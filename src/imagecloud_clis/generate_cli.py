@@ -59,6 +59,7 @@ step > 1 might speed up computation but give a worse fit.
 '''
 
 class ImageCloudGenerateArguments:
+    name = 'generate_imagecloud'
     def __init__ (
         self, 
         input: str,
@@ -107,7 +108,7 @@ class ImageCloudGenerateArguments:
     def parse(arguments: list[str]):
         parser = argparse.ArgumentParser(
             formatter_class=argparse.RawTextHelpFormatter,
-            prog='generate_imagecloud',
+            prog=ImageCloudGenerateArguments.name,
             description='''
             Generate an \'ImageCloud\' from a csv file indicating image filepath and weight for image.
             '''
@@ -299,8 +300,11 @@ class ImageCloudGenerateArguments:
 
 
 def generate(args: ImageCloudGenerateArguments | None = None) -> None:
+    sys_args = sys.argv[1:]
+    print('{0} {1}'.format(ImageCloudGenerateArguments.name, ' '.join(sys_args)))
+
     if args == None:
-        args = ImageCloudGenerateArguments.parse(sys.argv[1:])
+        args = ImageCloudGenerateArguments.parse(sys_args)
 
     print('loading {0} ...'.format(args.input))
     weighted_images: list[WeightedImage] = load_weighted_images(args.input)

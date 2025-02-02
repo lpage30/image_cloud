@@ -1,4 +1,6 @@
 #!/bin/bash
 script_path=$( cd -- "$(dirname "${BASH_SOURCE[0]}x")" >/dev/null 2>&1 ; pwd -P )
-source ${script_path}/clean
-python3 -m build ${script_path}
+pushd ${script_path}
+source clean
+# python3 setup.py build_ext --inplace
+python3 -m build

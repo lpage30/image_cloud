@@ -1,5 +1,5 @@
 from PIL import Image
-import imagecloud.native_integral_occupancy_functions as native
+import imagecloud.native_position_box_size as native
 class Point:
     x: int
     y: int
@@ -27,11 +27,7 @@ class Position(Point):
         super().__init__(position)
         self.left = position[0]
         self.upper = position[1]
-    
-    @property
-    def native(self):
-        return native.to_position(self.left, self.upper)
-    
+        
     def scale(self, scale: float):
         return Position((
             round(self.left * scale),
@@ -45,6 +41,10 @@ class Position(Point):
             return Position(((self.left + step), (self.upper + step)))
         else:
             return Position(((self.left - step), (self.upper - step)))
+
+    @staticmethod
+    def to_native(pos):
+        return native.py_to_position(pos.left, pos.upper)
 
     @staticmethod
     def from_native(native_pos):
@@ -64,9 +64,6 @@ class Size:
     @property
     def tuple(self) -> tuple[int, int]:
         return (self.width, self.height)
-    @property
-    def native(self):
-        return native.to_size(self.width, self.height)
     
     @property
     def area(self) -> int:
@@ -128,6 +125,10 @@ class Size:
     def __le__(self, other):
         return self.width <= other.width or self.height <= other.height        
     
+    @staticmethod
+    def to_native(size):
+        return native.py_to_size(size.width, size.height)
+
     @staticmethod
     def from_native(native_size):
         return Size((native_size['width'], native_size['height']))
@@ -204,9 +205,9 @@ class BoxCoordinates:
             self.size.adjust(-padding, False)
         )
 
-    @property
-    def native(self):
-        return native.to_box(self.position.native, self.size.native)
+    @staticmethod
+    def to_native(box):
+        return native.py_to_box(Position.to_native(box.position), Size.to_native(box.size))
     
     @staticmethod
     def from_native(native_box):

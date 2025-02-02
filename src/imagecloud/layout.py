@@ -233,13 +233,14 @@ class LayoutContour:
 class LayoutItem:
     def __init__(
         self,
-        original_image: NamedImage,
+        image: NamedImage,
         placement_box: BoxCoordinates,
         orientation: Image.Transpose | None,
         reservation_box: BoxCoordinates,        
         reservation_no: int
     ) -> None:
-        self._original_image = original_image
+        
+        self._original_image = image.original_named_image
         self._placement_box = placement_box
         self._orientation = orientation
         self._reservation_box = reservation_box

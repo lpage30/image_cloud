@@ -17,7 +17,7 @@ from imagecloud.weighted_image import (
     grow_size_by_step,
     shrink_size_by_step,
 )
-from imagecloud.integral_occupancy_map import IntegralOccupancyMap
+from imagecloud.integral_occupancy_map import IntegralOccupancyMap, SamplingResult
 import imagecloud.imagecloud_defaults as helper
 from imagecloud.layout import (
     LayoutContour,
@@ -340,7 +340,6 @@ class ImageCloud(object):
 
         # find best location for each image
         total = len(proportional_images)
-        orientation: None | Image.Transpose = None
         for index in range(total):
             weight = proportional_images[index].weight
             image = proportional_images[index].image
@@ -359,90 +358,45 @@ class ImageCloud(object):
             if self._logger:
                 self._logger.info('finding position in ImageCloud')
             
-            sampling_count = 0
-            new_image_size = Size(image.size)
-            rotate = (self._prefer_horizontal <= random_state.random())
-            # sampling we try image 2 ways until we get a position
-            # sampling 1:
-            #   - randomly choose to rotate or not
-            #   - use image's initial size
-            #   - search for position
-            #   - if found then no more sampling
-            #   - otherwise do next sampling:
-            #        - do sampling i if we didn't rotate
-            #        - do sampling i + 1 if we did rotate
-            # sampling i: 
-            #   - rotate image - no resize
-            #   - search for position
-            #   - if found then no more sampling
-            #   - otherwise do sampling i + 1
-            # sampling i + 1:
-            #   - unrotate image (sampling i had us rotate the size)
-            #   - shrink size by configured step
-            #   - if new image size is too small then no more sampling
-            #   - search for position
-            #   - if found then no more sampling
-            #   - otherwise do sampling i (lets try rotating and searching)
-
-            while True:
-                sampling_count += 1
+            sampling_result: SamplingResult = occupancy.sample_to_find_free_box(
+                Size(image.size),
+                self._min_image_size,
+                self._margin,
+                self._maintain_aspect_ratio,
+                self._image_step,
+                self._prefer_horizontal,
+                random_state
+            )
+            if sampling_result.found_reservation:
                 if self._logger:
-                    if 1 < sampling_count:
-                        self._logger.pop_indent()
-                    if 0 == sampling_count % 10:
-                        self._logger.debug('sampling {0}...'.format(sampling_count))
-                    self._logger.push_indent('Sampling {0}'.format(sampling_count))
-                if new_image_size < self._min_image_size:
-                    # image-size went too small
-                    break
-
-                if rotate:
-                    orientation = Image.Transpose.ROTATE_90
-                    if self._logger:
-                        self._logger.debug('transpose {0}'.format(orientation.name))
-                    new_image_size = new_image_size.transpose(orientation)
-                elif 1 < sampling_count and self._logger:
-                    self._logger.debug('resizing ({0},{1}) -> {2}'.format(
-                        image.size[0], image.size[1],
-                        str(new_image_size)
+                    self._logger.info('Found position: samplings({0}), orientation ({1}), resize({2}->{3})'.format(
+                        sampling_result.sampling_total,
+                        sampling_result.orientation.name if sampling_result.orientation is not None else None,
+                        str(Size(image.size)),str(sampling_result.new_size)
+                    ))
+                reservation_no = index + 1
+                occupancy.reserve_box(sampling_result.reservation_box, reservation_no)
+                layout_items.append(LayoutItem(
+                    proportional_images[index],
+                    sampling_result.actual_box,
+                    sampling_result.orientation,
+                    sampling_result.reservation_box,
+                    reservation_no
+                ))
+            else:
+                if self._logger:
+                    self._logger.info('Dropping image: samplings({0}). {1}'.format(
+                        sampling_result.sampling_total,
+                        'Image resized too small' if sampling_result.new_size < self._min_image_size else ''
                     ))
                 
-                # find a free position to occupy                
-                reservation = occupancy.find_free_box(
-                    new_image_size.adjust(self._margin, False),
-                    random_state
-                )
-                if reservation is not None:
-                    # reserve found a place
-                    reservation_no = index + 1
-                    occupancy.reserve_box(reservation, reservation_no)
-                    layout_items.append(LayoutItem(
-                        proportional_images[index],
-                        reservation.remove_margin(self._margin),
-                        orientation,
-                        reservation,
-                        reservation_no
-                    ))
-                    break
-
-                if rotate: # try resizing before rotating again
-                    new_image_size = new_image_size.untranspose(orientation)
-                    new_image_size = shrink_size_by_step(new_image_size, self.image_step, self.maintain_aspect_ratio)
-                    rotate = False
-                    orientation = None
-                else: # try rotating before resizing
-                    rotate = True
                     
             if self._logger:
                 self._logger.pop_indent()
 
-            if new_image_size < self._min_image_size:
-                if self._logger:
-                    self._logger.info('Dropping Image. resized too small')
-                break
-
         if self._logger:
             self._logger.pop_indent()
+
         self.layout_ = Layout(
             LayoutCanvas(
                 imagecloud_size,

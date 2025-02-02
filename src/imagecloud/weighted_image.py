@@ -8,26 +8,23 @@ from imagecloud.position_box_size import (
 
 class NamedImage(object):
     
-    def __init__(self, image: Image.Image, name: str | None = None) -> None:
+    def __init__(self, image: Image.Image, name: str | None = None, original_image: Image.Image | None = None) -> None:
+        self._original_image = original_image if original_image is not None else image
         self._image = image
         self._name = name if name is not None else ''
     
     @property
     def image(self) -> Image.Image:
         return self._image
-
+    
     @property
     def name(self) -> str:
         return self._name
     
-    @image.setter
-    def image(self, image: Image.Image) -> None:
-        self._image = image
-
-    @name.setter
-    def name(self, name: str) -> None:
-        self._name = name
-        
+    @property
+    def original_named_image(self):
+        return NamedImage(self._original_image, self.name)
+    
     @staticmethod
     def load(image_filepath: str):
         name = os.path.splitext(os.path.basename(image_filepath))[0]
@@ -36,19 +33,14 @@ class NamedImage(object):
 
 class WeightedImage(NamedImage):
     
-    def __init__(self, weight: float, image: Image.Image, name: str | None = None) -> None:
-        super().__init__(image, name)
+    def __init__(self, weight: float, image: Image.Image, name: str | None = None, original_image: Image.Image | None = None) -> None:
+        super().__init__(image, name, original_image)
         self._weight = weight
     
     @property
     def weight(self) -> float:
         return self._weight
-
     
-    @weight.setter
-    def weight(self, weight: float) -> None:
-        self._weight = weight
-        
     @staticmethod
     def load(weight: float, image_filepath: str):
         named_image = NamedImage.load(image_filepath)
@@ -166,7 +158,8 @@ def resize_images_to_proportionally_fit(
         result.append(WeightedImage(
             proportion_weight,
             new_image,
-            weighted_image.name
+            weighted_image.name,
+            weighted_image.image
         ))
     logger.pop_indent()
     return result

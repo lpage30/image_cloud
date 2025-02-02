@@ -1,9 +1,9 @@
 #!/bin/bash
 script_path=$( cd -- "$(dirname "${BASH_SOURCE[0]}x")" >/dev/null 2>&1 ; pwd -P )
 
-rm -rf ${script_path}/dist
-rm -rf ${script_path}/src/image_cloud.egg-info
-
 find ${script_path} -type d -name '__pycache__' -exec rm -rf "{}" +
+find ${script_path} -type d -name 'dist' -exec rm -rf "{}" +
+find ${script_path} -type d -name 'build' -exec rm -rf "{}" +
+find ${script_path} -type d -name 'image_cloud.egg-info' -exec rm -rf "{}" +
 find ${script_path} -type f -name '*.c' -exec rm -f "{}" + 
 find ${script_path} -type f -name '*.so' -exec rm -f "{}" + 
