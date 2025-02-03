@@ -71,9 +71,12 @@ def layout(args: LayoutCLIrguments | None = None) -> None:
     args.logger.info('loading {0} ...'.format(args.input))
     layout = Layout.load(args.input)
     args.logger.info('loaded layout with {0} images'.format(len(layout.items)))
-    args.logger.info('laying-out and showing image cloud layout with {0} scaling.'.format(args.scale))
+    args.logger.info('laying-out and showing imagecloud layout with {0} scaling.'.format(args.scale))
     
-    layout.name = args.get_output_name(layout.name)
+    layout.set_names(
+        args.get_output_name(layout.name),
+        args.get_output_name(layout.canvas.name)
+    )
 
     if args.maximize_empty_space:
         args.logger.info('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))

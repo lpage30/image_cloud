@@ -40,21 +40,21 @@ class CLIBaseArguments:
         if collage:
             result = True
             filepath = to_unused_filepath(self.output_directory, collage.name, self.output_image_format)
-            print('saving image cloud to {0}'.format(filepath))
+            print('saving imagecloud to {0}'.format(filepath))
             collage.image.save(filepath, self.output_image_format)
             print('completed! {0}'.format(filepath))
 
         if reservation_chart:
             result = True
             filepath = to_unused_filepath(self.output_directory, reservation_chart.name, self.output_image_format)
-            print('saving image cloud reservation chart to {0}'.format(filepath))
+            print('saving imagecloud reservation chart to {0}'.format(filepath))
             collage.image.save(filepath, self.output_image_format)
             print('completed! {0}'.format(filepath))
         
         if layout:
             result = True
             filepath = to_unused_filepath(self.output_directory, layout.name, 'csv')
-            print('saving image cloud Layout to {0}'.format(filepath))
+            print('saving imagecloud Layout to {0}'.format(filepath))
             layout.write(filepath)
             print('completed! {0}'.format(filepath))
         
@@ -91,7 +91,7 @@ class CLIBaseArguments:
         argParser.add_argument(
             '-show_imagecloud',
             action='store_true',
-            help='Optional, {0}show image cloud.'.format('(default) ' if showDefault else '')
+            help='Optional, {0}show imagecloud.'.format('(default) ' if showDefault else '')
         )
         argParser.add_argument(
             '-no-show_imagecloud',
@@ -104,13 +104,13 @@ class CLIBaseArguments:
         argParser.add_argument(
             '-show_imagecloud_reservation_chart',
             action='store_true',
-            help='Optional, show reservation_chart for image cloud.'
+            help='Optional, show reservation_chart for imagecloud.'
         )
         argParser.add_argument(
             '-no-show_imagecloud_reservation_chart',
             action='store_false',
             dest='show_imagecloud_reservation_chart',
-            help='Optional, (default) do not show reservation_chart for image cloud.'
+            help='Optional, (default) do not show reservation_chart for imagecloud.'
         )
         argParser.set_defaults(show_imagecloud_reservation_chart=False)
 

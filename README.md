@@ -1,6 +1,6 @@
 # ImageCloud
 
-This tool is used to construct image clouds from a CSV of weights and image source filepaths.
+This tool is used to construct imageclouds from a CSV of weights and image source filepaths.
 The idea is similar to a word cloud except with images being scaled instead of words.
 
 ## Build/Install
@@ -19,13 +19,19 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 ### generate_imagecloud
 ```
 usage: generate_imagecloud [-h] -i <csv_filepath> [-output_directory <output-directory-path>]
-                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
-                           [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
-                           [-log_filepath <log-filepath>] [-cloud_size "<width>,<height>"] [-cloud_expansion_step_size <int>] [-maximize_empty_space]
-                           [-no-maximize_empty_space] [-margin <number>] [-min_image_size "<width>,<height>"] [-step_size <int>] [-maintain_aspect_ratio]
-                           [-no-maintain_aspect_ratio] [-max_image_size "<width>,<height>"]
-                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [-background_color <color-name>]
-                           [-mask <image_file_path>] [-contour_width <float>] [-contour_color <color-name>]
+                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                           [-show_imagecloud] [-no-show_imagecloud]
+                           [-show_imagecloud_reservation_chart]
+                           [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
+                           [-log_filepath <log-filepath>] [-cloud_size "<width>,<height>"]
+                           [-cloud_expansion_step_size <int>] [-maximize_empty_space]
+                           [-no-maximize_empty_space] [-margin <number>]
+                           [-min_image_size "<width>,<height>"] [-step_size <int>]
+                           [-maintain_aspect_ratio] [-no-maintain_aspect_ratio]
+                           [-max_image_size "<width>,<height>"]
+                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N]
+                           [-background_color <color-name>] [-mask <image_file_path>]
+                           [-contour_width <float>] [-contour_color <color-name>]
 
             Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
             
@@ -43,12 +49,12 @@ options:
                         Optional, output directory for all output
   -output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
                         Optional,(default png) image format: [blp,bmp,dds,dib,eps,gif,icns,ico,im,jpeg,mpo,msp,pcx,pfm,png,ppm,sgi,webp,xbm]
-  -show_imagecloud      Optional, (default) show image cloud.
+  -show_imagecloud      Optional, (default) show imagecloud.
   -no-show_imagecloud   Optional, do not show mage cloud.
   -show_imagecloud_reservation_chart
-                        Optional, show reservation_chart for image cloud.
+                        Optional, show reservation_chart for imagecloud.
   -no-show_imagecloud_reservation_chart
-                        Optional, (default) do not show reservation_chart for image cloud.
+                        Optional, (default) do not show reservation_chart for imagecloud.
   -verbose              Optional, report progress as constructing cloud
   -no-verbose           Optional, (default) report progress as constructing cloud
   -log_filepath <log-filepath>
@@ -81,7 +87,7 @@ options:
   -mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N
                         Optional, (default RGBA) Transparent background will be generated when mode is "RGBA" and background_color is None.
   -background_color <color-name>
-                        Optional, (default None) Background color for the image cloud image.
+                        Optional, (default None) Background color for the imagecloud image.
   -mask <image_file_path>
                         Optional, (default None) Image file
                         If not None, gives a binary mask on where to draw words.
@@ -106,9 +112,12 @@ csv file for weighted images with following format:
 ### layout_imagecloud
 ```
 usage: layout_imagecloud [-h] -i <csv_filepath> [-output_directory <output-directory-path>]
-                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
-                         [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
-                         [-log_filepath <log-filepath>] [-scale <float>] [-maximize_empty_space] [-no-maximize_empty_space]
+                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                         [-show_imagecloud] [-no-show_imagecloud]
+                         [-show_imagecloud_reservation_chart]
+                         [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
+                         [-log_filepath <log-filepath>] [-scale <float>]
+                         [-maximize_empty_space] [-no-maximize_empty_space]
 
             Layout and show a generated 'ImageCloud' from its layout csv file
             
@@ -117,18 +126,18 @@ options:
   -h, --help            show this help message and exit
   -i, --input <csv_filepath>
                         Required, csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:
-                        "layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
-                        <integer>,<width>,<height>,<integer>,True|False,<float>,<image-margin>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
+                        "layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin","layout_name","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
+                        <integer>,<width>,<height>,<integer>,True|False,<float>,<image-margin>,<name>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
   -output_directory <output-directory-path>
                         Optional, output directory for all output
   -output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
                         Optional,(default png) image format: [blp,bmp,dds,dib,eps,gif,icns,ico,im,jpeg,mpo,msp,pcx,pfm,png,ppm,sgi,webp,xbm]
-  -show_imagecloud      Optional, show image cloud.
+  -show_imagecloud      Optional, show imagecloud.
   -no-show_imagecloud   Optional, (default) do not show mage cloud.
   -show_imagecloud_reservation_chart
-                        Optional, show reservation_chart for image cloud.
+                        Optional, show reservation_chart for imagecloud.
   -no-show_imagecloud_reservation_chart
-                        Optional, (default) do not show reservation_chart for image cloud.
+                        Optional, (default) do not show reservation_chart for imagecloud.
   -verbose              Optional, report progress as constructing cloud
   -no-verbose           Optional, (default) report progress as constructing cloud
   -log_filepath <log-filepath>
@@ -142,8 +151,8 @@ options:
 #### CSV to import
 csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:
 ```csv
-"layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
-<integer>,<width>,<height>,<integer>,True|False,<float>,<image-margin>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
+"layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_maintain_aspect_ratio","layout_scale","layout_margin","layout_name","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
+<integer>,<width>,<height>,<integer>,True|False,<float>,<image-margin>,<name>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
 ```
 #### Sample layout script
 `sample-layout` is an example of how the `layout_imagecloud` could be used. This example builds off the `sample-generate` to operate on its result by maximizing the empty-space, if any, surrounding the images in the image-cloud.

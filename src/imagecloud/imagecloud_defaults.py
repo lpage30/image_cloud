@@ -59,7 +59,7 @@ MIN_IMAGE_SIZE_HELP = '''Smallest image size to use.
 Will stop when there is no more room in this size.
 '''
 
-BACKGROUND_COLOR_HELP = 'Background color for the image cloud image.'
+BACKGROUND_COLOR_HELP = 'Background color for the imagecloud image.'
 
 CONTOUR_WIDTH_HELP = 'If mask is not None and contour_width > 0, draw the mask contour.'
 

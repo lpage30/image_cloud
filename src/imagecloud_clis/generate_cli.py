@@ -223,7 +223,7 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
         mode=args.mode,
         name=args.get_output_name()
     )
-    args.logger.info('generating image cloud from {0} weighted and normalized images.{1}'.format(
+    args.logger.info('generating imagecloud from {0} weighted and normalized images.{1}'.format(
         total_images,
         ' Cloud will be expanded iteratively by cloud_expansion_step_size until all images are positioned.' if 0 != args.cloud_expansion_step_size else ''
     ))

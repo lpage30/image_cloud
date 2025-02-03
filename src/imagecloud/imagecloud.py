@@ -28,7 +28,7 @@ from imagecloud.layout import (
 # implementation was extrapolated from wordcloud and adapted for images
  
 class ImageCloud(object):
-    r"""Image cloud object for generating and pasting.
+    r"""imagecloud object for generating and pasting.
 
     Parameters
     ----------
@@ -43,7 +43,7 @@ class ImageCloud(object):
         width and height of imagecloud
 
     background_color : color value (default=helper.DEFAULT_BACKGROUND_COLOR)
-        Background color for the image cloud image.
+        Background color for the imagecloud image.
     
     max_images : number (default=helper.DEFAULT_MAX_IMAGES)
         The maximum number of images.
@@ -259,7 +259,15 @@ class ImageCloud(object):
                 layout.contour.width,
                 layout.contour.color
             ),
-            new_items
+            new_items,
+            layout.max_images,
+            layout.min_image_size,
+            layout.image_step,
+            layout.maintain_aspect_ratio,
+            layout.scale,
+            layout.margin,
+            layout.name + '.maximized'
+            
         )
         self._logger = self._logger.copy()
 
@@ -273,7 +281,7 @@ class ImageCloud(object):
     ) -> Layout: 
 
         if len(proportional_images) <= 0:
-            raise ValueError("We need at least 1 image to plot a image cloud, "
+            raise ValueError("We need at least 1 image to plot a imagecloud, "
                              "got %d." % len(proportional_images))
         
         occupancy = IntegralOccupancyMap(imagecloud_size)
@@ -381,7 +389,8 @@ class ImageCloud(object):
             self._image_step,
             self._maintain_aspect_ratio,
             self._scale,
-            self._margin
+            self._margin,
+            self._name + '.layout'
         )
         return self.layout_
 

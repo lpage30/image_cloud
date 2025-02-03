@@ -1,7 +1,7 @@
 #!/bin/bash
 layout_log=/Users/$USER/imagecloud/layout-log.$(date '+%Y%m%d.%H%M%S').txt
 
-input_csv=/Users/$USER/imagecloud/li/imagecloud_layout.csv
+input_csv=/Users/$USER/imagecloud/li/imagecloud-import.layout.csv
 output_directory=/Users/$USER/imagecloud/li
 image_type=png
 

@@ -376,8 +376,10 @@ class Layout:
         maintain_aspect_ratio: bool | None = None,
         scale: float | None = None,
         margin: int | None = None,
+        name: str | None = None
         
     ) -> None:
+        self._name = name if name else 'imagecloud.layout'
         self._canvas = canvas
         self._contour = contour
         self._items = items
@@ -394,12 +396,12 @@ class Layout:
     
     @property
     def name(self) -> str:
-        return self.canvas.name
+        return self._name
 
-    @name.setter
-    def name(self, v: str) -> None:
-        self.canvas.name = v
-
+    def set_names(self, layout: str, canvas: str) -> None:
+        self._name = layout
+        self.canvas.name = canvas
+        
     @property
     def canvas(self) -> LayoutCanvas:
         return self._canvas
@@ -478,7 +480,8 @@ class Layout:
             LAYOUT_IMAGE_STEP: self.image_step,
             LAYOUT_MAINTAIN_ASPECT_RATIO: self.maintain_aspect_ratio,
             LAYOUT_SCALE: self.scale,
-            LAYOUT_MARGIN: self.margin
+            LAYOUT_MARGIN: self.margin,
+            LAYOUT_NAME: self.name
         }
         with open(csv_filepath, 'w') as file:
             csv_writer = csv.DictWriter(file, fieldnames=LAYOUT_CSV_HEADERS)
@@ -526,8 +529,9 @@ class Layout:
             image_step = int(layout_data[LAYOUT_IMAGE_STEP]) if LAYOUT_IMAGE_STEP in layout_data else None
             maintain_aspect_ratio = layout_data[LAYOUT_MAINTAIN_ASPECT_RATIO].lower() in ['true', 'yes', '1'] if LAYOUT_MAINTAIN_ASPECT_RATIO in layout_data else None
             scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
-            margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None        
-            return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, margin)
+            margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None
+            name = layout_data[LAYOUT_NAME] if LAYOUT_NAME in layout_data else None       
+            return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, margin, name)
         except Exception as e:
             raise Exception(str(e))
 
@@ -545,6 +549,8 @@ LAYOUT_SCALE = 'layout_scale'
 LAYOUT_SCALE_HELP = '<float>'
 LAYOUT_MARGIN = 'layout_margin'
 LAYOUT_MARGIN_HELP = '<image-margin>'
+LAYOUT_NAME = 'layout_name'
+LAYOUT_NAME_HELP = '<name>'
 LAYOUT_HEADERS = [
     LAYOUT_MAX_IMAGES,
     LAYOUT_MIN_IMAGE_SIZE_WIDTH,
@@ -552,7 +558,8 @@ LAYOUT_HEADERS = [
     LAYOUT_IMAGE_STEP,
     LAYOUT_MAINTAIN_ASPECT_RATIO,
     LAYOUT_SCALE,
-    LAYOUT_MARGIN
+    LAYOUT_MARGIN,
+    LAYOUT_NAME
 ]
 LAYOUT_HEADERS_HELP = [
     LAYOUT_MAX_IMAGES_HELP,
@@ -561,7 +568,8 @@ LAYOUT_HEADERS_HELP = [
     LAYOUT_IMAGE_STEP_HELP,
     LAYOUT_MAINTAIN_ASPECT_RATIO_HELP,
     LAYOUT_SCALE_HELP,
-    LAYOUT_MARGIN_HELP
+    LAYOUT_MARGIN_HELP,
+    LAYOUT_NAME_HELP
 ]
 LAYOUT_CANVAS_SIZE_WIDTH = 'layout_canvas_size_width'
 LAYOUT_CANVAS_SIZE_WIDTH_HELP = '<width>'
