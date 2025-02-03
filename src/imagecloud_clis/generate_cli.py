@@ -237,7 +237,7 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
     if not(np.array_equal(layout.canvas.occupancy_map, reconstructed_occupancy_map)):
         args.logger.info('Warning occupancy map from generation not same as reconstructed from images.')
     
-    collage = layout.to_image(logger=args.logger)
+    collage = layout.to_image(args.logger)
 
     args.try_save_output(collage, None, layout)
 
