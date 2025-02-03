@@ -1,5 +1,6 @@
-from imagecloud.console_logger import ConsoleLogger
 import argparse
+from imagecloud.base_logger import BaseLogger
+from imagecloud.file_logger import FileLogger
 import imagecloud_clis.cli_helpers as cli_helpers
 from imagecloud.imagecloud_helpers import to_unused_filepath
 from imagecloud.imagecloud_defaults import DEFAULT_IMAGE_FORMAT, IMAGE_FORMATS, IMAGE_FORMAT_HELP
@@ -9,15 +10,19 @@ from imagecloud.layout import Layout
 
 class CLIBaseArguments:
     def __init__ (
-        self, 
-        parsedArgs
+        self,
+        name: str,
+        parsedArgs: argparse.Namespace
     ):
         self.input: str = parsedArgs.input
         self.output_directory: str | None = parsedArgs.output_directory
         self.output_image_format: str = parsedArgs.output_image_format
         self.show_imagecloud: bool = parsedArgs.show_imagecloud
         self.show_imagecloud_reservation_chart: bool = parsedArgs.show_imagecloud_reservation_chart
-        self.logger=ConsoleLogger.create(parsedArgs.verbose)
+        if parsedArgs.log_filepath:
+            self.logger: BaseLogger = FileLogger.create(name, parsedArgs.verbose, parsedArgs.log_filepath)
+        else:
+            self.logger: BaseLogger = BaseLogger.create(name, parsedArgs.verbose)
 
     def get_output_name(self, existing_name: str | None = None) -> str:
         return cli_helpers.to_name(self.input, self.output_image_format, existing_name, self.output_directory)
@@ -57,7 +62,7 @@ class CLIBaseArguments:
 
     @staticmethod
     def add_parser_arguments(
-        argParser,
+        argParser: argparse.ArgumentParser,
         inputHelp: str,
         showDefault: bool,
         verboseDefault: bool
@@ -121,3 +126,11 @@ class CLIBaseArguments:
             help='Optional, {0}report progress as constructing cloud'.format('' if verboseDefault else '(default) ')
         )
         argParser.set_defaults(verbose=verboseDefault)
+        
+        argParser.add_argument(
+            '-log_filepath',
+            metavar='<log-filepath>',
+            type=lambda fp: cli_helpers.existing_dirpath_of_filepath(argParser, fp),
+            help='Optional, all output logging will also be written to this logfile'
+            
+        )

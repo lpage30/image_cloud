@@ -4,7 +4,6 @@ import colorsys
 from random import Random
 from webcolors import (
     name_to_rgb,
-    rgb_to_name,
     names as color_names,
 )
 

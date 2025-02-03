@@ -1,4 +1,4 @@
-from imagecloud.console_logger import ConsoleLogger
+from imagecloud.base_logger import BaseLogger
 from PIL import Image
 from random import Random
 import warnings
@@ -80,7 +80,8 @@ class ImageCloud(object):
         Transparent background will be generated when mode is "RGBA" and
         background_color is None.
     """
-    def __init__(self, 
+    def __init__(self,
+                 logger: BaseLogger,
                  mask: Image.Image | None = None,
                  size: Size | None = None,
                  background_color: str | None = None,
@@ -94,7 +95,6 @@ class ImageCloud(object):
                  contour_color: str | None = None,
                  margin: int | None = None,
                  mode: str | None = None,
-                 logger: ConsoleLogger | None = None,
                  name: str | None = None
     ) -> None:
         self._mask: np.ndarray | None = np.array(mask) if mask is not None else None
@@ -154,9 +154,8 @@ class ImageCloud(object):
         weighted_images = sort_by_weight(weighted_images, True)[:self._max_images]
         resize_count = 0
         imagecloud_size = self.size
-        if self._logger:
-            self._logger.info('Generating ImageCloud from {0} images'.format(len(weighted_images)))
-            self._logger.push_indent('generating')
+        self._logger.info('Generating ImageCloud from {0} images'.format(len(weighted_images)))
+        self._logger.push_indent('generating')
 
         proportional_images = resize_images_to_proportionally_fit(
             weighted_images,
@@ -189,21 +188,19 @@ class ImageCloud(object):
                     cloud_expansion_step_size, 
                     self.maintain_aspect_ratio
                 )
-                if self._logger:
-                    if 1 == resize_count:
-                        self._logger.info('Expanding ImageCloud to fit {0} remaining images.'.format(len(weighted_images) - len(result.items)))
-                        self._logger.push_indent('Expanding ImageCloud')
-                    if 0 == (resize_count - 1) % 10:
-                        self._logger.info('{0}/{1} images fit. Expanding ImageCloud [{2}] ({3},{4}) -> ({5},{6}) to fit more ...'.format(
-                            len(result.items),len(weighted_images), resize_count,
-                            self.size[0], self.size[1],
-                            imagecloud_size[0], imagecloud_size[1]
-                        ))
+                if 1 == resize_count:
+                    self._logger.info('Expanding ImageCloud to fit {0} remaining images.'.format(len(weighted_images) - len(result.items)))
+                    self._logger.push_indent('Expanding ImageCloud')
+                if 0 == (resize_count - 1) % 10:
+                    self._logger.info('{0}/{1} images fit. Expanding ImageCloud [{2}] ({3},{4}) -> ({5},{6}) to fit more ...'.format(
+                        len(result.items),len(weighted_images), resize_count,
+                        self.size[0], self.size[1],
+                        imagecloud_size[0], imagecloud_size[1]
+                    ))
                 continue
             break
 
-        if self._logger:
-            self._logger = self._logger.copy()
+        self._logger = self._logger.copy()
 
         return result
     
@@ -217,15 +214,13 @@ class ImageCloud(object):
         occupancy.occupancy_map = layout.canvas.occupancy_map
         new_items: list[LayoutItem] = list()
         total_images = len(layout.items)
-        if self._logger:
-            self._logger.info('Maximizing ImageCloud empty-space around  {0} images'.format(total_images))
-            self._logger.push_indent('maximizing-empty-space')
+        self._logger.info('Maximizing ImageCloud empty-space around  {0} images'.format(total_images))
+        self._logger.push_indent('maximizing-empty-space')
 
         for i in range(total_images - 1, -1, -1):
             item: LayoutItem = layout.items[i]
             expanded_versions = occupancy.find_expanded_box_versions(item.reservation_box)
-            if self._logger:
-                self._logger.push_indent('Image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
+            self._logger.push_indent('Image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
 
             if expanded_versions is None:
                 new_items.append(item)
@@ -245,10 +240,9 @@ class ImageCloud(object):
                     item.reservation_no
                 )
             )
-            if self._logger:
-                self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}'.format(
-                    (total_images - i), total_images, item.name, str(item.reservation_box), str(new_reservation_box)))
-                self._logger.pop_indent()
+            self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}'.format(
+                (total_images - i), total_images, item.name, str(item.reservation_box), str(new_reservation_box)))
+            self._logger.pop_indent()
                 
 
         new_items.reverse()
@@ -267,8 +261,7 @@ class ImageCloud(object):
             ),
             new_items
         )
-        if self._logger:
-            self._logger = self._logger.copy()
+        self._logger = self._logger.copy()
 
         return self.layout_
 
@@ -326,19 +319,16 @@ class ImageCloud(object):
             weight = proportional_images[index].weight
             image = proportional_images[index].image
             name = proportional_images[index].name
-            if self._logger:
-                self._logger.push_indent('Image-{0}[{1}/{2}]'.format(name, index + 1, total))
+            self._logger.push_indent('Image-{0}[{1}/{2}]'.format(name, index + 1, total))
 
             if weight == 0:
-                if self._logger:
-                    self._logger.info('Dropping 0 weight'.format(
-                        index+1, total, name
-                    ))
-                    self._logger.pop_indent()
+                self._logger.info('Dropping 0 weight'.format(
+                    index+1, total, name
+                ))
+                self._logger.pop_indent()
                 continue
 
-            if self._logger:
-                self._logger.info('Finding position in ImageCloud')
+            self._logger.info('Finding position in ImageCloud')
             
             sampling_result: SamplingResult = occupancy.sample_to_find_free_box(
                 Size(image.size),
@@ -349,12 +339,11 @@ class ImageCloud(object):
                 random_state
             )
             if sampling_result.found_reservation:
-                if self._logger:
-                    self._logger.info('Found position: samplings({0}), orientation ({1}), resize({2}->{3})'.format(
-                        sampling_result.sampling_total,
-                        sampling_result.orientation.name if sampling_result.orientation is not None else None,
-                        str(Size(image.size)),str(sampling_result.new_size)
-                    ))
+                self._logger.info('Found position: samplings({0}), orientation ({1}), resize({2}->{3})'.format(
+                    sampling_result.sampling_total,
+                    sampling_result.orientation.name if sampling_result.orientation is not None else None,
+                    str(Size(image.size)),str(sampling_result.new_size)
+                ))
                 reservation_no = index + 1
                 occupancy.reserve_box(sampling_result.reservation_box, reservation_no)
                 layout_items.append(LayoutItem(
@@ -365,15 +354,13 @@ class ImageCloud(object):
                     reservation_no
                 ))
             else:
-                if self._logger:
-                    self._logger.info('Dropping image: samplings({0}). {1}'.format(
-                        sampling_result.sampling_total,
-                        'Image resized too small' if sampling_result.new_size < self._min_image_size else ''
-                    ))
+                self._logger.info('Dropping image: samplings({0}). {1}'.format(
+                    sampling_result.sampling_total,
+                    'Image resized too small' if sampling_result.new_size < self._min_image_size else ''
+                ))
                 
                     
-            if self._logger:
-                self._logger.pop_indent()
+            self._logger.pop_indent()
 
         self.layout_ = Layout(
             LayoutCanvas(
@@ -421,9 +408,10 @@ class ImageCloud(object):
     @staticmethod
     def create(
         layout: Layout,
-        logger: ConsoleLogger | None = None
+        logger: BaseLogger
     ):
         result = ImageCloud(
+            logger,
             layout.contour.mask,
             layout.canvas.size,
             layout.canvas.background_color,
@@ -437,7 +425,6 @@ class ImageCloud(object):
             layout.contour.color,
             layout.margin,
             layout.canvas.mode,
-            logger,
             layout.canvas.name
         )
         result.layout_ = layout

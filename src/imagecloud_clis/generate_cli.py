@@ -53,7 +53,7 @@ class GenerateCLIArguments(CLIBaseArguments):
         self, 
         parsedArgs
     ) -> None:
-        super().__init__(parsedArgs)
+        super().__init__(self.name, parsedArgs)
         self.max_image_size: Size | None = parsedArgs.max_image_size
         self.min_image_size: Size = parsedArgs.min_image_size
         self.cloud_size: Size = parsedArgs.cloud_size
@@ -199,17 +199,17 @@ class GenerateCLIArguments(CLIBaseArguments):
 
 def generate(args: GenerateCLIArguments | None = None) -> None:
     sys_args = sys.argv[1:]
-    print('{0} {1}'.format(GenerateCLIArguments.name, ' '.join(sys_args)))
-
     if args == None:
         args = GenerateCLIArguments.parse(sys_args)
-
-    print('loading {0} ...'.format(args.input))
+    
+    args.logger.info('{0} {1}'.format(GenerateCLIArguments.name, ' '.join(sys_args)))
+    args.logger.info('loading {0} ...'.format(args.input))
     weighted_images: list[WeightedImage] = load_weighted_images(args.input)
     total_images = len(weighted_images)
-    print('loaded {0} weights and images'.format(total_images))
+    args.logger.info('loaded {0} weights and images'.format(total_images))
 
     image_cloud = ImageCloud(
+        logger=args.logger,
         mask=args.mask,
         size=args.cloud_size,
         background_color=args.background_color,
@@ -221,24 +221,23 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
         contour_color=args.contour_color,
         margin=args.margin,
         mode=args.mode,
-        logger=args.logger.copy() if args.logger else None,
         name=args.get_output_name()
     )
-    print('generating image cloud from {0} weighted and normalized images.{1}'.format(
+    args.logger.info('generating image cloud from {0} weighted and normalized images.{1}'.format(
         total_images,
         ' Cloud will be expanded iteratively by cloud_expansion_step_size until all images are positioned.' if 0 != args.cloud_expansion_step_size else ''
     ))
 
     layout = image_cloud.generate(weighted_images, cloud_expansion_step_size=args.cloud_expansion_step_size)
     if args.maximize_empty_space:
-        print('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
+        args.logger.info('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
         layout = image_cloud.maximize_empty_space(layout)
 
     reconstructed_occupancy_map = layout.reconstruct_occupancy_map()
     if not(np.array_equal(layout.canvas.occupancy_map, reconstructed_occupancy_map)):
-        print('Warning occupancy map from generation not same as reconstructed from images.')
+        args.logger.info('Warning occupancy map from generation not same as reconstructed from images.')
     
-    collage = layout.to_image(logger=args.logger.copy() if args.logger else None) if args.output_directory is not None or args.show else None
+    collage = layout.to_image(logger=args.logger)
 
     args.try_save_output(collage, None, layout)
 

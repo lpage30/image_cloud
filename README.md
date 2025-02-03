@@ -19,18 +19,13 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 ### generate_imagecloud
 ```
 usage: generate_imagecloud [-h] -i <csv_filepath> [-output_directory <output-directory-path>]
-                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
-                           [-show_imagecloud] [-no-show_imagecloud]
-                           [-show_imagecloud_reservation_chart]
-                           [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
-                           [-cloud_size "<width>,<height>"] [-cloud_expansion_step_size <int>]
-                           [-maximize_empty_space] [-no-maximize_empty_space] [-margin <number>]
-                           [-min_image_size "<width>,<height>"] [-step_size <int>]
-                           [-maintain_aspect_ratio] [-no-maintain_aspect_ratio]
-                           [-max_image_size "<width>,<height>"]
-                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N]
-                           [-background_color <color-name>] [-mask <image_file_path>]
-                           [-contour_width <float>] [-contour_color <color-name>]
+                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
+                           [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
+                           [-log_filepath <log-filepath>] [-cloud_size "<width>,<height>"] [-cloud_expansion_step_size <int>] [-maximize_empty_space]
+                           [-no-maximize_empty_space] [-margin <number>] [-min_image_size "<width>,<height>"] [-step_size <int>] [-maintain_aspect_ratio]
+                           [-no-maintain_aspect_ratio] [-max_image_size "<width>,<height>"]
+                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [-background_color <color-name>]
+                           [-mask <image_file_path>] [-contour_width <float>] [-contour_color <color-name>]
 
             Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
             
@@ -56,6 +51,8 @@ options:
                         Optional, (default) do not show reservation_chart for image cloud.
   -verbose              Optional, report progress as constructing cloud
   -no-verbose           Optional, (default) report progress as constructing cloud
+  -log_filepath <log-filepath>
+                        Optional, all output logging will also be written to this logfile
   -cloud_size "<width>,<height>"
                         Optional, (default 400,200) width and height of canvas
   -cloud_expansion_step_size <int>
@@ -109,11 +106,9 @@ csv file for weighted images with following format:
 ### layout_imagecloud
 ```
 usage: layout_imagecloud [-h] -i <csv_filepath> [-output_directory <output-directory-path>]
-                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
-                         [-show_imagecloud] [-no-show_imagecloud]
-                         [-show_imagecloud_reservation_chart]
-                         [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
-                         [-scale <float>] [-maximize_empty_space] [-no-maximize_empty_space]
+                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
+                         [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
+                         [-log_filepath <log-filepath>] [-scale <float>] [-maximize_empty_space] [-no-maximize_empty_space]
 
             Layout and show a generated 'ImageCloud' from its layout csv file
             
@@ -136,6 +131,8 @@ options:
                         Optional, (default) do not show reservation_chart for image cloud.
   -verbose              Optional, report progress as constructing cloud
   -no-verbose           Optional, (default) report progress as constructing cloud
+  -log_filepath <log-filepath>
+                        Optional, all output logging will also be written to this logfile
   -scale <float>        Optional, (default 1.0) scale up/down all images
   -maximize_empty_space
                         Optional maximize images, after generation, to fill surrouding empty space.

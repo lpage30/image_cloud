@@ -1,4 +1,4 @@
-from imagecloud.console_logger import ConsoleLogger
+from imagecloud.base_logger import BaseLogger
 from imagecloud.weighted_image import NamedImage
 from imagecloud.position_box_size import (Size, Position, BoxCoordinates)
 import imagecloud.imagecloud_defaults as helper
@@ -285,24 +285,22 @@ class LayoutItem:
 
     def to_image(
         self,
-        scale: float = 1.0,
-        logger: ConsoleLogger | None = None
+        logger: BaseLogger,
+        scale: float = 1.0
     ) -> NamedImage:
         new_image = self.original_image.image
 
         if self.orientation:
-            if logger:
-                logger.info('Transposing {0} {1}'.format(self.name, self.orientation.name))
+            logger.info('Transposing {0} {1}'.format(self.name, self.orientation.name))
             new_image = new_image.transpose(self.orientation)
         
         new_size = self.placement_box.size.scale(scale)
         if new_image.size != new_size.tuple:
-            if logger:
-                logger.info('Resizing {0} ({1},{2}) -> {3}'.format(
-                    self.original_image.name,
-                    new_image.size[0], new_image.size[1],
-                    str(new_size)
-                ))
+            logger.info('Resizing {0} ({1},{2}) -> {3}'.format(
+                self.original_image.name,
+                new_image.size[0], new_image.size[1],
+                str(new_size)
+            ))
             new_image = new_image.resize(new_size.tuple)
 
         return NamedImage(new_image, self.original_image.name)
@@ -422,19 +420,17 @@ class Layout:
     
     def to_image(
         self,
-        scale: float = 1.0,
-        logger: ConsoleLogger | None = None
+        logger: BaseLogger,
+        scale: float = 1.0
     ) -> NamedImage:
         canvas = self.canvas.to_image(scale)
 
         total = len(self.items)
-        if logger:
-            logger.info('pasting {0} images into imagecloud canvas'.format(total))
+        logger.info('pasting {0} images into imagecloud canvas'.format(total))
 
         for i in range(total):
             item: LayoutItem = self.items[i]
-            if logger:
-                logger.info('pasting Image[{0}/{1}] {2} into imagecloud canvas'.format(i + 1, total, item.original_image.name))            
+            logger.info('pasting Image[{0}/{1}] {2} into imagecloud canvas'.format(i + 1, total, item.original_image.name))            
             image = item.to_image(scale, logger)
             box = item.placement_box.scale(scale)
             try:
@@ -443,8 +439,7 @@ class Layout:
                     box=box.tuple
                 )
             except Exception as e:
-                if logger:
-                    logger.info('Error pasting {0} into {1}. {2} \n{3}'.format(image.name, canvas.name, str(e), '\n'.join(traceback.format_exception(e))))
+                logger.error('Error pasting {0} into {1}. {2} \n{3}'.format(image.name, canvas.name, str(e), '\n'.join(traceback.format_exception(e))))
 
         return self.contour.to_image(canvas)
 

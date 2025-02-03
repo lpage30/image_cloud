@@ -1,4 +1,6 @@
 #!/bin/bash
+generate_log=/Users/$USER/imagecloud/generate-log.$(date '+%Y%m%d.%H%M%S').txt
+
 input_csv=/Users/$USER/imagecloud/imagecloud-import.csv
 output_directory=/Users/$USER/imagecloud/li
 image_type=png
@@ -16,4 +18,5 @@ generate_imagecloud \
     -cloud_size $linkedin_background_size \
     -min_image_size $reasonable_smallest_size \
     -maintain_aspect_ratio \
-    -show_imagecloud
+    -show_imagecloud \
+    -log_filepath $generate_log

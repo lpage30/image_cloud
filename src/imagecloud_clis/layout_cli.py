@@ -16,7 +16,7 @@ class LayoutCLIrguments(CLIBaseArguments):
         self, 
         parsedArgs
     ) -> None:
-        super().__init__(parsedArgs)
+        super().__init__(self.name, parsedArgs)
         self.scale: float = parsedArgs.scale
         self.maximize_empty_space: bool = parsedArgs.maximize_empty_space
     
@@ -63,25 +63,24 @@ class LayoutCLIrguments(CLIBaseArguments):
 
 
 def layout(args: LayoutCLIrguments | None = None) -> None:
-    sys_args = sys.argv[1:]
-    print('{0} {1}'.format(LayoutCLIrguments.name, ' '.join(sys_args)))
-    
+    sys_args = sys.argv[1:]    
     if args == None:
         args = LayoutCLIrguments.parse(sys_args)
-
-    print('loading {0} ...'.format(args.input))
+    
+    args.logger.info('{0} {1}'.format(LayoutCLIrguments.name, ' '.join(sys_args)))
+    args.logger.info('loading {0} ...'.format(args.input))
     layout = Layout.load(args.input)
-    print('loaded layout with {0} images'.format(len(layout.items)))
-    print('laying-out and showing image cloud layout with {0} scaling.'.format(args.scale))
+    args.logger.info('loaded layout with {0} images'.format(len(layout.items)))
+    args.logger.info('laying-out and showing image cloud layout with {0} scaling.'.format(args.scale))
     
     layout.name = args.get_output_name(layout.name)
 
     if args.maximize_empty_space:
-        print('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
-        cloud = ImageCloud.create(layout, args.logger.copy() if args.logger else None)
+        args.logger.info('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
+        cloud = ImageCloud.create(layout, args.logger.copy())
         layout = cloud.maximize_empty_space(layout)
 
-    collage = layout.to_image(scale=args.scale, logger=args.logger.copy() if args.logger else None)
+    collage = layout.to_image(args.logger.copy(), args.scale)
     reservation_chart = layout.to_reservation_chart_image()
     args.try_save_output(collage, reservation_chart, layout)
         
