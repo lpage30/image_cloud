@@ -6,7 +6,7 @@ from imagecloud.position_box_size import (
     BoxCoordinates
 )
 from PIL import Image
-import imagecloud.native_integral_occupancy_functions as native
+import imagecloud.native.integral_occupancy_functions as native
 
 
 OccupancyMapDataType = np.uint32
@@ -17,40 +17,40 @@ class Direction(IntEnum):
     DOWN = 3
     RIGHT = 4
 
-class SamplingResult(object):
+class SampledFreeBoxResult(object):
     
     def __init__(
         self, 
-        found_reservation: bool,
+        found: bool,
         sampling_total: int,
         new_size: Size,
-        reservation_box: BoxCoordinates | None = None,
+        free_box: BoxCoordinates | None = None,
         actual_box: BoxCoordinates | None = None,
         orientation: Image.Transpose | None = None
     ):
-        self.found_reservation = found_reservation
+        self.found = found
         self.sampling_total = sampling_total
         self.new_size = new_size
-        self.reservation_box = reservation_box
+        self.free_box = free_box
         self.actual_box = actual_box
         self.orientation = orientation
     
     @staticmethod
-    def from_native(native_samplingresult):
-        if 0 != native_samplingresult['found_reservation']:
-            return  SamplingResult(
+    def from_native(native_sampledfreeboxresult):
+        if 0 != native_sampledfreeboxresult['found']:
+            return  SampledFreeBoxResult(
                 True,
-                native_samplingresult['sampling_total'],
-                Size.from_native(native_samplingresult['new_size']),
-                BoxCoordinates.from_native(native_samplingresult['reservation_box']),
-                BoxCoordinates.from_native(native_samplingresult['actual_box']),
-                Image.Transpose(native_samplingresult['orientation']) if 0 <= native_samplingresult['orientation'] else None
+                native_sampledfreeboxresult['sampling_total'],
+                Size.from_native(native_sampledfreeboxresult['new_size']),
+                BoxCoordinates.from_native(native_sampledfreeboxresult['free_box']),
+                BoxCoordinates.from_native(native_sampledfreeboxresult['actual_box']),
+                Image.Transpose(native_sampledfreeboxresult['orientation']) if 0 <= native_sampledfreeboxresult['orientation'] else None
             )
         else:
-            return  SamplingResult(
+            return  SampledFreeBoxResult(
                 False,
-                native_samplingresult['sampling_total'],
-                Size.from_native(native_samplingresult['new_size']),
+                native_sampledfreeboxresult['sampling_total'],
+                Size.from_native(native_sampledfreeboxresult['new_size']),
             )
 
 
@@ -86,9 +86,9 @@ class IntegralOccupancyMap(object):
         maintain_aspect_ratio: bool,
         step_size: int,
         random_state
-    ) -> SamplingResult:
+    ) -> SampledFreeBoxResult:
      
-        return SamplingResult.from_native(
+        return SampledFreeBoxResult.from_native(
             native.py_sample_to_find_free_box(
                 self._occupancy_map,
                 Size.to_native(size),

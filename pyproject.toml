@@ -28,5 +28,3 @@ layout_imagecloud = "imagecloud_clis.layout_cli:layout"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-

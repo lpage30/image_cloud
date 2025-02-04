@@ -26,10 +26,23 @@ cdef enum Transpose:
     TRANSPOSE = 5
     TRANSVERSE = 6
 
+cdef struct SizeDistance:
+    Size size
+    int distance
+
+cdef struct SampledResize:
+    int sampling_total
+    Size new_size    
+
 cdef to_position(int left, int upper)
 
+cdef empty_position()
+
+cdef is_empty_position(Position pos)
 
 cdef to_size(int width, int height)
+
+cdef empty_size()
 
 cdef adjust_size(int step, Size size, int maintain_aspect_ratio)
 
@@ -37,7 +50,14 @@ cdef transpose_size(Transpose transpose, Size size)
 
 cdef untranspose_size(Transpose transpose, Size size)
 
-
 cdef to_box(Position position, Size size)
 
+cdef empty_box()
+
+cdef is_empty_box(BoxCoordinates box)
+
 cdef remove_margin(int margin, BoxCoordinates box)
+
+cdef calculate_closest_size_distance(Size size, int area, int step_size, int maintain_aspect_ratio)
+
+cdef sample_resize_to_area(Size size, int area, int step_size, int maintain_aspect_ratio)

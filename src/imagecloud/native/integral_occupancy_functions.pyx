@@ -2,11 +2,13 @@
 # cython: boundscheck=False
 # cython: wraparound=False
 from cpython cimport array
-from imagecloud.native_position_box_size cimport (
+from imagecloud.native.position_box_size cimport (
      Position,
      Size,
      BoxCoordinates,
      Transpose,
+     empty_box,
+     is_empty_box,
      to_position,
      to_box, 
      to_size,
@@ -16,42 +18,36 @@ from imagecloud.native_position_box_size cimport (
      untranspose_size
 )
 
-
 cdef is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box):
     for x in range(box.left, box.right):
         for y in range(box.upper, box.lower):
-          if occupancy_map[x, y] != 0:
-            return False
+            if occupancy_map[x, y] != 0:
+                return False
     return True
 
 def py_is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box):
     return is_free_position(occupancy_map, box)
 
 cdef find_free_box(unsigned int[:,:] occupancy_map, Size size, random_state):
-    cdef Size scan_size = to_size(occupancy_map.shape[0], occupancy_map.shape[1])
-    cdef Position pos = to_position(0,0)
-    cdef BoxCoordinates box = to_box(pos,size)
+    cdef Size scan_size = to_size(occupancy_map.shape[0] - size.width, occupancy_map.shape[1] - size.height)
     cdef array.array positions = array.array('i', [])
+    cdef position_count = 0
     cdef chosen_position_left_index = 0
     
-    # box positions are '(left,upper) so we need to go from (top-left) to (bottom-right) in occupancy map
-    for left in range(scan_size.width):
-        if scan_size.width <= (left + size.width):
-            break
-        for upper in range(scan_size.height):
-            if scan_size.height <= (upper + size.height):
-                break
-            pos = to_position(left, upper)
-            box = to_box(pos,size)
-            if is_free_position(occupancy_map, box):
-                positions.extend([pos.left, pos.upper])
-
-    if 0 == len(positions):
-        return None
+    cdef int x = 0
+    cdef int y = 0
+    for x in range(scan_size.width):
+        for y in range(scan_size.height):
+            if is_free_position(occupancy_map, to_box(to_position(x, y), size)):
+                positions.extend([x, y])
+                position_count += 1
+    
+    if 0 == position_count:
+        return empty_box()
 
     # positions is an array of ints extended with position left and upper
     # we want to randomly pick the index of a position left
-    chosen_position_left_index = random_state.randint(0, int(len(positions)/2) - 1 ) * 2
+    chosen_position_left_index = random_state.randint(0, position_count - 1 ) * 2
     return to_box(
         to_position(
             positions[chosen_position_left_index],
@@ -60,8 +56,10 @@ cdef find_free_box(unsigned int[:,:] occupancy_map, Size size, random_state):
         size
     )
 
+
 def py_find_free_box(unsigned int[:,:] occupancy_map, Size size, random_state):
-    return find_free_box(occupancy_map, size, random_state)
+    cdef BoxCoordinates result = find_free_box(occupancy_map, size, random_state)
+    return None if is_empty_box(result) else result
 
 cdef sample_to_find_free_box(
     unsigned int[:,:] occupancy_map, 
@@ -77,13 +75,13 @@ cdef sample_to_find_free_box(
     cdef Size new_size = size
     cdef int shrink_step_size = -1 * step_size
     cdef Transpose orientation = Transpose.NONE
-    cdef BoxCoordinates reservation_box
-    cdef SamplingResult result
+    cdef BoxCoordinates free_box
+    cdef SampledFreeBoxResult result
 
     while True:
         sampling_count += 1
         if new_size.width < min_size.width or new_size.height < min_size.height:
-            result.found_reservation = 0
+            result.found = 0
             result.sampling_total = sampling_count 
             result.new_size = new_size
             return result
@@ -91,15 +89,14 @@ cdef sample_to_find_free_box(
         if 0 != rotate:
             orientation = Transpose.ROTATE_90
             new_size = transpose_size(orientation, new_size)
-        
-        reservation = find_free_box(occupancy_map, adjust_size(margin, new_size, maintain_aspect_ratio), random_state)
-        if reservation is not None:
-            result.found_reservation = 1
+                
+        free_box = find_free_box(occupancy_map, adjust_size(margin, new_size, maintain_aspect_ratio), random_state)
+        if not(is_empty_box(free_box)):
+            result.found = 1
             result.sampling_total = sampling_count
             result.new_size = new_size
-            result.reservation_box = reservation
-            result.actual_box = remove_margin(margin, reservation)
-            result.new_size = new_size
+            result.free_box = free_box
+            result.actual_box = remove_margin(margin, free_box)
             result.orientation = orientation
             return result
         

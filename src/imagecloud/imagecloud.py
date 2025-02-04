@@ -3,12 +3,12 @@ from PIL import Image
 from random import Random
 import warnings
 import numpy as np
-
 from imagecloud.position_box_size import Size
 from imagecloud.imagecloud_helpers import (
     parse_to_int,
     parse_to_float,
     parse_to_size,
+    TimeMeasure,
 )
 from imagecloud.weighted_image import (
     WeightedImage,
@@ -16,7 +16,7 @@ from imagecloud.weighted_image import (
     resize_images_to_proportionally_fit,
     grow_size_by_step,
 )
-from imagecloud.integral_occupancy_map import IntegralOccupancyMap, SamplingResult
+from imagecloud.integral_occupancy_map import IntegralOccupancyMap, SampledFreeBoxResult
 import imagecloud.imagecloud_defaults as helper
 from imagecloud.layout import (
     LayoutContour,
@@ -165,8 +165,10 @@ class ImageCloud(object):
             self._margin,
             self._logger
         )
-
+        measure = TimeMeasure()
+        measure.start()
         while True:
+            self._logger.push_indent('creating-imagecloud')
             if self.mask is not None:
                 imagecloud_size = Size((
                     self.mask.shape[0],
@@ -179,27 +181,39 @@ class ImageCloud(object):
                 self._random_state if self._random_state is not None else Random(),
                 max_image_size
             )
+            self._logger.pop_indent()
+            if 0 < resize_count:
+                self._logger.pop_indent()
             if 0 < cloud_expansion_step_size and len(result.items) != len(weighted_images):
                 resize_count += 1
-                if self.mask is not None:
-                    raise ValueError('Cannot expand_cloud_to_fit_all when mask is provided.')
-                imagecloud_size = grow_size_by_step(
+                if 1 == resize_count:                    
+                    if self.mask is not None:
+                        raise ValueError('Cannot expand_cloud_to_fit_all when mask is provided.')  
+
+                new_imagecloud_size = grow_size_by_step(
                     imagecloud_size, 
                     cloud_expansion_step_size, 
                     self.maintain_aspect_ratio
                 )
-                if 1 == resize_count:
-                    self._logger.info('Expanding ImageCloud to fit {0} remaining images.'.format(len(weighted_images) - len(result.items)))
-                    self._logger.push_indent('Expanding ImageCloud')
-                if 0 == (resize_count - 1) % 10:
-                    self._logger.info('{0}/{1} images fit. Expanding ImageCloud [{2}] ({3},{4}) -> ({5},{6}) to fit more ...'.format(
-                        len(result.items),len(weighted_images), resize_count,
-                        self.size[0], self.size[1],
-                        imagecloud_size[0], imagecloud_size[1]
-                    ))
+                self._logger.info('Expanded ImageCloud ({0} -> {1}) for dropped images ({2}/{3})'.format(
+                    str(imagecloud_size),
+                    str(new_imagecloud_size),
+                    (len(weighted_images) - len(result.items)),
+                    len(weighted_images)
+                ))
+                imagecloud_size = new_imagecloud_size
+                
+                self._logger.push_indent('expanded-imagecloud-{0}'.format(resize_count))
                 continue
             break
 
+        measure.stop()
+        self._logger.pop_indent()
+        self._logger.info('Generated: {0}/{1} images ({2})'.format(
+            len(result.items),
+            len(proportional_images),
+            measure.latency_str()
+        ))
         self._logger = self._logger.copy()
 
         return result
@@ -216,14 +230,19 @@ class ImageCloud(object):
         total_images = len(layout.items)
         self._logger.info('Maximizing ImageCloud empty-space around  {0} images'.format(total_images))
         self._logger.push_indent('maximizing-empty-space')
-
+        measure = TimeMeasure()
+        measure.start()
+        maximized_count = 0
         for i in range(total_images - 1, -1, -1):
             item: LayoutItem = layout.items[i]
+            image_measure = TimeMeasure()
+            image_measure.start()
+            self._logger.push_indent('image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
             expanded_versions = occupancy.find_expanded_box_versions(item.reservation_box)
-            self._logger.push_indent('Image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
-
+            image_measure.stop()
             if expanded_versions is None:
                 new_items.append(item)
+                self._logger.pop_indent()
                 continue
             # maximum expanded box is the possible_box with largest area
             expanded_versions.sort(key=lambda v: v.area, reverse=True)
@@ -240,10 +259,21 @@ class ImageCloud(object):
                     item.reservation_no
                 )
             )
-            self._logger.info('Maximized empty-space: Image [{0}/{1}] {2} from {3} -> {4}'.format(
-                (total_images - i), total_images, item.name, str(item.reservation_box), str(new_reservation_box)))
+            maximized_count += 1
+            self._logger.info('resized {0} -> {1}. ({2})'.format(
+                str(item.reservation_box),
+                str(new_reservation_box),
+                image_measure.latency_str(),
+            ))
             self._logger.pop_indent()
-                
+
+        measure.stop()
+        self._logger.pop_indent()
+        self._logger.info('Maximized {0}/{1} images ({2})'.format(
+            maximized_count,
+            len(new_items),
+            measure.latency_str()
+        ))    
 
         new_items.reverse()
         self.layout_ = Layout(
@@ -327,7 +357,9 @@ class ImageCloud(object):
             weight = proportional_images[index].weight
             image = proportional_images[index].image
             name = proportional_images[index].name
-            self._logger.push_indent('Image-{0}[{1}/{2}]'.format(name, index + 1, total))
+            measure = TimeMeasure()
+            measure.start()
+            self._logger.push_indent('image-{0}[{1}/{2}]'.format(name, index + 1, total))
 
             if weight == 0:
                 self._logger.info('Dropping 0 weight'.format(
@@ -338,7 +370,7 @@ class ImageCloud(object):
 
             self._logger.info('Finding position in ImageCloud')
             
-            sampling_result: SamplingResult = occupancy.sample_to_find_free_box(
+            sampled_result: SampledFreeBoxResult = occupancy.sample_to_find_free_box(
                 Size(image.size),
                 self._min_image_size,
                 self._margin,
@@ -346,25 +378,31 @@ class ImageCloud(object):
                 self._image_step,
                 random_state
             )
-            if sampling_result.found_reservation:
-                self._logger.info('Found position: samplings({0}), orientation ({1}), resize({2}->{3})'.format(
-                    sampling_result.sampling_total,
-                    sampling_result.orientation.name if sampling_result.orientation is not None else None,
-                    str(Size(image.size)),str(sampling_result.new_size)
+            measure.stop()
+            if sampled_result.found:
+                self._logger.info('Found position: samplings({0}), orientation ({1}), resize({2}->{3}) ({4})'.format(
+                    sampled_result.sampling_total,
+                    sampled_result.orientation.name if sampled_result.orientation is not None else None,
+                    str(Size(image.size)),
+                    str(sampled_result.new_size),
+                    measure.latency_str()
                 ))
                 reservation_no = index + 1
-                occupancy.reserve_box(sampling_result.reservation_box, reservation_no)
+                occupancy.reserve_box(sampled_result.free_box, reservation_no)
                 layout_items.append(LayoutItem(
                     proportional_images[index],
-                    sampling_result.actual_box,
-                    sampling_result.orientation,
-                    sampling_result.reservation_box,
+                    sampled_result.actual_box,
+                    sampled_result.orientation,
+                    sampled_result.free_box,
                     reservation_no
                 ))
             else:
-                self._logger.info('Dropping image: samplings({0}). {1}'.format(
-                    sampling_result.sampling_total,
-                    'Image resized too small' if sampling_result.new_size < self._min_image_size else ''
+                self._logger.info('Dropping image: samplings({0}). {1} resize({2} -> {3}) ({4})'.format(
+                    sampled_result.sampling_total,
+                    'Image resized too small' if sampled_result.new_size < self._min_image_size else '',
+                    str(Size(image.size)),
+                    str(sampled_result.new_size),
+                    measure.latency_str()
                 ))
                 
                     

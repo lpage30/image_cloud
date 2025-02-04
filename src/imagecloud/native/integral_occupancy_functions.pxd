@@ -1,20 +1,19 @@
 # cython: language_level=3
 # cython: boundscheck=False
 # cython: wraparound=False
-from imagecloud.native_position_box_size cimport ( 
+from imagecloud.native.position_box_size cimport ( 
     Size,
     BoxCoordinates,
     Transpose
 )
 
-cdef struct SamplingResult:
-    int found_reservation
+cdef struct SampledFreeBoxResult:
+    int found
     int sampling_total
     Size new_size
-    BoxCoordinates reservation_box
+    BoxCoordinates free_box
     BoxCoordinates actual_box
     Transpose orientation
-
 
 cdef is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box)
 

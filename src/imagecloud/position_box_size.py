@@ -1,5 +1,5 @@
 from PIL import Image
-import imagecloud.native_position_box_size as native
+import imagecloud.native.position_box_size as native
 class Point:
     x: int
     y: int

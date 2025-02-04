@@ -2,9 +2,9 @@ from imagecloud.base_logger import BaseLogger
 import os
 import csv
 from PIL import Image
-from imagecloud.position_box_size import (
-    Size
-)
+from imagecloud.imagecloud_helpers import TimeMeasure
+from imagecloud.position_box_size import Size
+from imagecloud.native.position_box_size import py_sample_resize_to_area
 
 class NamedImage(object):
     
@@ -20,6 +20,10 @@ class NamedImage(object):
     @property
     def name(self) -> str:
         return self._name
+    
+    @property
+    def size(self) -> Size:
+        return Size(self._image.size)
     
     @property
     def original_named_image(self):
@@ -112,46 +116,41 @@ def resize_images_to_proportionally_fit(
     total = len(weighted_images)
     total_weight = sum(weighted_image.weight for weighted_image in weighted_images)
     fit_area = fit_size.area
-    logger.info('proportionally fitting {0} images to {1}'.format(total, str(fit_size)))
-
+    logger.info('Proportionally fitting {0} images to {1}'.format(total, str(fit_size)))
+    logger.push_indent('fitting')
+    fitted_images = 0
+    measure0 = TimeMeasure()
+    measure0.start()
     for index in range(total):
         weighted_image = weighted_images[index]
         proportion_weight = weighted_image.weight / total_weight
         resize_area = round(proportion_weight * fit_area)
-        last_image_size = Size((weighted_image.image.size[0] + margin, weighted_image.image.size[1] + margin))
-        last_distance = calculate_distance(resize_area, last_image_size.area)
-        if 0 < index:
-            logger.pop_indent()
-        logger.push_indent('Image-{0}[{1}/{2}]'.format(weighted_image.name, index+1, total, ))
-        search_count = 0
-        last_four_distances = [0, 0, 0, 0, 0, 0]
-        while True:
-            search_count += 1
-            if 1 < search_count:
-                logger.pop_indent()
-            logger.push_indent('fit-{0}'.format(search_count))
-
-            best_image_size, best_distance = calculate_closest_size_distance(
-                last_image_size,
-                resize_area,
-                step_size,
-                maintain_aspect_ratio
-            )
-            if last_distance < best_distance or (last_four_distances[0] == last_distance and last_four_distances[1] == best_distance):
-                break
-            else:
-                last_four_distances[(search_count - 1) % 6] = best_distance
-                last_distance = best_distance
-                last_image_size = best_image_size
-        logger.pop_indent()
+        image_size = weighted_image.size.adjust(margin, False)
+        logger.push_indent('image-{0}[{1}/{2}]'.format(weighted_image.name, index+1, total, ))
+        measure1 = TimeMeasure()
+        measure1.start()
+        native_sampled_resize = py_sample_resize_to_area(
+            Size.to_native(image_size),
+            resize_area,
+            step_size,
+            1 if maintain_aspect_ratio else 0
+        )
+        sampling_total = int(native_sampled_resize['sampling_total'])
+        sampled_size = Size.from_native(native_sampled_resize['new_size'])
+        measure1.stop()
         new_image = weighted_image.image
-        new_image_size = (last_image_size.width - margin, last_image_size.height - margin)
-        if(weighted_image.image.size != new_image_size):
-            logger.info('resizing ({0},{1}) -> ({2},{3})'.format(
-                weighted_image.image.size[0], weighted_image.image.size[1],
-                new_image_size[0], new_image_size[1]
+        new_image_size = sampled_size.adjust(-1 * margin, False)
+        if(weighted_image.size != new_image_size):
+            fitted_images += 1
+            logger.info('Found Best Fit: samplings({0}) resize({1}->{2}) ({3})'.format(
+                sampling_total,
+                str(weighted_image.size),
+                str(new_image_size),
+                measure1.latency_str()
             ))
-            new_image = weighted_image.image.resize(new_image_size)
+            new_image = weighted_image.image.resize(new_image_size.tuple)
+        logger.pop_indent()
+        
 
         result.append(WeightedImage(
             proportion_weight,
@@ -159,7 +158,14 @@ def resize_images_to_proportionally_fit(
             weighted_image.name,
             weighted_image.image
         ))
+    measure0.stop()
     logger.pop_indent()
+    logger.info('Fitted {0}/{1} images ({2})'.format(
+            fitted_images,
+            len(result),
+            measure0.latency_str()
+        ))    
+
     return result
 
 WEIGHTED_IMAGE_WEIGHT = 'weight'
