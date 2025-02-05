@@ -17,7 +17,7 @@ cdef struct BoxCoordinates:
     int lower
 
 cdef enum Transpose:
-    NONE = -1
+    NO_TRANSPOSE = -1
     FLIP_LEFT_RIGHT = 0
     FLIP_TOP_BOTTOM = 1
     ROTATE_90 = 2
@@ -25,6 +25,11 @@ cdef enum Transpose:
     ROTATE_270 = 4
     TRANSPOSE = 5
     TRANSVERSE = 6
+
+cdef enum ResizeType:
+    NO_RESIZE_TYPE = -1
+    MAINTAIN_ASPECT_RATIO = 1
+    MAINTAIN_PERCENTAGE_CHANGE = 2
 
 cdef struct SizeDistance:
     Size size
@@ -39,15 +44,26 @@ cdef Position to_position(
     int upper
 )
 
+cdef ResizeType to_resize_type(int resize_type)
+
 cdef Size to_size(
     int width,
     int height
 )
 
+cdef float aspect_ratio(
+    Size size
+)
+
+cdef float percent_change(
+    int step,
+    Size size
+)
+
 cdef Size adjust_size(
     int step,
     Size size,
-    int maintain_aspect_ratio
+    ResizeType resize_type
 )
 
 cdef Size transpose_size(
@@ -80,12 +96,12 @@ cdef SizeDistance calculate_closest_size_distance(
     Size size,
     int area,
     int step_size,
-    int maintain_aspect_ratio
+    ResizeType resize_type
 )
 
 cdef SampledResize sample_resize_to_area(
     Size size,
     int area,
     int step_size,
-    int maintain_aspect_ratio
+    ResizeType resize_type
 )

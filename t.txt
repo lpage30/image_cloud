@@ -1,0 +1,852 @@
+~/Documents/GitHub/image_cloud ~/Documents/GitHub/image_cloud
+* Creating isolated environment: venv+pip...
+* Installing packages in isolated environment:
+  - Cython>=3.0.11
+  - setuptools>=75.8.0
+* Getting build dependencies for sdist...
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+cdef Position to_position(
+    int left,
+    int upper
+)
+cdef ResizeType to_resize_type(int type):
+    match type:
+          ^
+------------------------------------------------------------
+
+src/imagecloud/native/position_box_size.pxd:47:10: Syntax error in simple statement list
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:4:0: 'imagecloud/native/position_box_size/ResizeType.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:4:0: 'imagecloud/native/position_box_size/Size.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:4:0: 'imagecloud/native/position_box_size/BoxCoordinates.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:4:0: 'imagecloud/native/position_box_size/Transpose.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+)
+
+cdef struct SampledFreeBoxResult:
+    int found
+    int sampling_total
+    Size new_size
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:14:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+
+cdef struct SampledFreeBoxResult:
+    int found
+    int sampling_total
+    Size new_size
+    BoxCoordinates free_box
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:15:4: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+cdef struct SampledFreeBoxResult:
+    int found
+    int sampling_total
+    Size new_size
+    BoxCoordinates free_box
+    BoxCoordinates actual_box
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:16:4: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    int found
+    int sampling_total
+    Size new_size
+    BoxCoordinates free_box
+    BoxCoordinates actual_box
+    Transpose orientation
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:17:4: 'Transpose' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    BoxCoordinates actual_box
+    Transpose orientation
+
+cdef int is_free_position(
+    unsigned int[:,:] occupancy_map, 
+    BoxCoordinates box
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:21:4: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+cdef int is_free_position(
+    unsigned int[:,:] occupancy_map, 
+    BoxCoordinates box
+)
+
+cdef BoxCoordinates find_free_box(
+     ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:24:5: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+)
+
+cdef BoxCoordinates find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size, random_state
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:27:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+)
+
+cdef SampledFreeBoxResult sample_to_find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:33:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+
+cdef SampledFreeBoxResult sample_to_find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    Size min_size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:34:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    Size min_size,
+    int margin,
+    ResizeType resize_type,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pxd:36:4: 'ResizeType' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/Position.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/empty_box.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/is_empty_box.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/to_position.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/to_box.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/to_resize_type.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/to_size.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/transpose_size.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/adjust_size.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/remove_margin.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+from imagecloud.native.position_box_size cimport (
+^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:4:0: 'imagecloud/native/position_box_size/untranspose_size.pxd' not found
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+     untranspose_size
+)
+
+cdef int is_free_position(
+    unsigned int[:,:] occupancy_map, 
+    BoxCoordinates box
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:24:4: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+                return 0
+    return 1
+
+def py_is_free_position(
+    unsigned int[:,:] occupancy_map,
+    BoxCoordinates box
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:34:4: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    unsigned int[:,:] occupancy_map,
+    BoxCoordinates box
+) -> bool:
+    return True if 0 != is_free_position(occupancy_map, box) else False
+
+cdef BoxCoordinates find_free_box(
+     ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:38:5: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    return True if 0 != is_free_position(occupancy_map, box) else False
+
+cdef BoxCoordinates find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:41:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+
+
+def py_find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:78:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    return None if is_empty_box(result) else result
+
+cdef SampledFreeBoxResult sample_to_find_free_box(
+    unsigned int[:,:] occupancy_map, 
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:92:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+
+cdef SampledFreeBoxResult sample_to_find_free_box(
+    unsigned int[:,:] occupancy_map, 
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    Size min_size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:93:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    unsigned int[:,:] occupancy_map, 
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    Size min_size,
+    int margin,
+    ResizeType resize_type,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:95:4: 'ResizeType' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            rotate = 1
+
+def py_sample_to_find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:145:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+
+def py_sample_to_find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    Size min_size,
+    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:146:4: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    random_state
+):
+    cdef Size scan_size = to_size(
+         ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:44:9: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    random_state
+) -> BoxCoordinates | None:
+    cdef BoxCoordinates result = find_free_box(
+         ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:81:9: 'BoxCoordinates' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    int step_size,
+    random_state
+):
+    cdef int sampling_count = 0
+    cdef int rotate = 0
+    cdef Size new_size = size
+         ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:101:9: 'Size' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+):
+    cdef int sampling_count = 0
+    cdef int rotate = 0
+    cdef Size new_size = size
+    cdef int shrink_step_size = -1 * step_size
+    cdef Transpose orientation = Transpose.NONE
+         ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:103:9: 'Transpose' is not a type identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    cdef int sampling_count = 0
+    cdef int rotate = 0
+    cdef Size new_size = size
+    cdef int shrink_step_size = -1 * step_size
+    cdef Transpose orientation = Transpose.NONE
+    cdef BoxCoordinates free_box
+         ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:104:9: 'BoxCoordinates' is not a type identifier
+performance hint: src/imagecloud/native/integral_occupancy_functions.pyx:28:29: Index should be typed for more efficient access
+performance hint: src/imagecloud/native/integral_occupancy_functions.pyx:28:32: Index should be typed for more efficient access
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    random_state
+):
+    cdef Size scan_size = to_size(
+                          ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:44:26: 'to_size' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    
+    cdef int x = 0
+    cdef int y = 0
+    for x in range(scan_size.width):
+        for y in range(scan_size.height):
+            if is_free_position(occupancy_map, to_box(to_position(x, y), size)):
+                                               ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:55:47: 'to_box' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    
+    cdef int x = 0
+    cdef int y = 0
+    for x in range(scan_size.width):
+        for y in range(scan_size.height):
+            if is_free_position(occupancy_map, to_box(to_position(x, y), size)):
+                                                      ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:55:54: 'to_position' is not a constant, variable or function identifier
+performance hint: src/imagecloud/native/integral_occupancy_functions.pyx:56:40: Index should be typed for more efficient access
+performance hint: src/imagecloud/native/integral_occupancy_functions.pyx:57:55: Index should be typed for more efficient access
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+                position_scratch_buffer[position_index] = x
+                position_scratch_buffer[position_index + 1] = y
+                position_index = position_index + 2
+    
+    if 0 == position_index:
+        return empty_box()
+               ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:61:15: 'empty_box' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+        return empty_box()
+
+    # positions is an array of ints extended with position left and upper
+    # we want to randomly pick the index of a position left
+    free_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
+    return to_box(
+           ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:66:11: 'to_box' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+
+    # positions is an array of ints extended with position left and upper
+    # we want to randomly pick the index of a position left
+    free_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
+    return to_box(
+        to_position(
+        ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:67:8: 'to_position' is not a constant, variable or function identifier
+performance hint: src/imagecloud/native/integral_occupancy_functions.pyx:68:36: Index should be typed for more efficient access
+performance hint: src/imagecloud/native/integral_occupancy_functions.pyx:69:56: Index should be typed for more efficient access
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+        occupancy_map, 
+        position_scratch_buffer, 
+        size,
+        random_state
+    )
+    return None if is_empty_box(result) else result
+                   ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:87:19: 'is_empty_box' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+):
+    cdef int sampling_count = 0
+    cdef int rotate = 0
+    cdef Size new_size = size
+    cdef int shrink_step_size = -1 * step_size
+    cdef Transpose orientation = Transpose.NONE
+                                          ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:103:42: cimported module has no attribute 'NONE'
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            result.sampling_total = sampling_count 
+            result.new_size = new_size
+            return result
+
+        if 0 != rotate:
+            orientation = Transpose.ROTATE_90
+                                   ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:116:35: cimported module has no attribute 'ROTATE_90'
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            result.new_size = new_size
+            return result
+
+        if 0 != rotate:
+            orientation = Transpose.ROTATE_90
+            new_size = transpose_size(orientation, new_size)
+                       ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:117:23: 'transpose_size' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            new_size = transpose_size(orientation, new_size)
+                
+        free_box = find_free_box(
+            occupancy_map,
+            position_scratch_buffer,
+            adjust_size(margin, new_size, ResizeType.NONE),
+            ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:122:12: 'adjust_size' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            new_size = transpose_size(orientation, new_size)
+                
+        free_box = find_free_box(
+            occupancy_map,
+            position_scratch_buffer,
+            adjust_size(margin, new_size, ResizeType.NONE),
+                                                    ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:122:52: cimported module has no attribute 'NONE'
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            occupancy_map,
+            position_scratch_buffer,
+            adjust_size(margin, new_size, ResizeType.NONE),
+            random_state
+        )
+        if not(is_empty_box(free_box)):
+               ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:125:15: 'is_empty_box' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+        if not(is_empty_box(free_box)):
+            result.found = 1
+            result.sampling_total = sampling_count
+            result.new_size = new_size
+            result.free_box = free_box
+            result.actual_box = remove_margin(margin, free_box)
+                                ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:130:32: 'remove_margin' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            result.actual_box = remove_margin(margin, free_box)
+            result.orientation = orientation
+            return result
+        
+        if 0 != rotate:
+            new_size = untranspose_size(orientation, new_size)
+                       ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:135:23: 'untranspose_size' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            result.orientation = orientation
+            return result
+        
+        if 0 != rotate:
+            new_size = untranspose_size(orientation, new_size)
+            new_size = adjust_size(shrink_step_size, new_size, resize_type)
+                       ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:136:23: 'adjust_size' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+            return result
+        
+        if 0 != rotate:
+            new_size = untranspose_size(orientation, new_size)
+            new_size = adjust_size(shrink_step_size, new_size, resize_type)
+            orientation = Transpose.NONE
+                                   ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:137:35: cimported module has no attribute 'NONE'
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+        occupancy_map,
+        position_scratch_buffer,
+        size,
+        min_size,
+        margin,
+        to_resize_type(resize_type),
+        ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:158:8: 'to_resize_type' is not a constant, variable or function identifier
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+    int margin,
+    int resize_type,
+    int step_size,
+    random_state
+) -> SampledFreeBoxResult:
+    return sample_to_find_free_box(
+                                  ^
+------------------------------------------------------------
+
+src/imagecloud/native/integral_occupancy_functions.pyx:152:34: Cannot convert 'SampledFreeBoxResult' to Python object
+Compiling src/imagecloud/native/integral_occupancy_functions.pyx because it changed.
+Compiling src/imagecloud/native/position_box_size.pyx because it changed.
+[1/2] Cythonizing src/imagecloud/native/integral_occupancy_functions.pyx
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.13/site-packages/pyproject_hooks/_in_process/_in_process.py", line 389, in <module>
+    main()
+    ~~~~^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pyproject_hooks/_in_process/_in_process.py", line 373, in main
+    json_out["return_val"] = hook(**hook_input["kwargs"])
+                             ~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.13/site-packages/pyproject_hooks/_in_process/_in_process.py", line 317, in get_requires_for_build_sdist
+    return hook(config_settings)
+  File "/private/var/folders/jj/qdq1fbmj2wn5m2776z0frchm0000gn/T/build-env-bxqe37w_/lib/python3.13/site-packages/setuptools/build_meta.py", line 337, in get_requires_for_build_sdist
+    return self._get_build_requires(config_settings, requirements=[])
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/var/folders/jj/qdq1fbmj2wn5m2776z0frchm0000gn/T/build-env-bxqe37w_/lib/python3.13/site-packages/setuptools/build_meta.py", line 304, in _get_build_requires
+    self.run_setup()
+    ~~~~~~~~~~~~~~^^
+  File "/private/var/folders/jj/qdq1fbmj2wn5m2776z0frchm0000gn/T/build-env-bxqe37w_/lib/python3.13/site-packages/setuptools/build_meta.py", line 320, in run_setup
+    exec(code, locals())
+    ~~~~^^^^^^^^^^^^^^^^
+  File "<string>", line 5, in <module>
+  File "/private/var/folders/jj/qdq1fbmj2wn5m2776z0frchm0000gn/T/build-env-bxqe37w_/lib/python3.13/site-packages/Cython/Build/Dependencies.py", line 1154, in cythonize
+    cythonize_one(*args)
+    ~~~~~~~~~~~~~^^^^^^^
+  File "/private/var/folders/jj/qdq1fbmj2wn5m2776z0frchm0000gn/T/build-env-bxqe37w_/lib/python3.13/site-packages/Cython/Build/Dependencies.py", line 1321, in cythonize_one
+    raise CompileError(None, pyx_file)
+Cython.Compiler.Errors.CompileError: src/imagecloud/native/integral_occupancy_functions.pyx
+
+ERROR Backend subprocess exited when trying to invoke get_requires_for_build_sdist

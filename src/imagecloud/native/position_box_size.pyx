@@ -18,6 +18,13 @@ def py_to_position(
 ) -> Position:
     return to_position(left, upper)
 
+cdef ResizeType to_resize_type(int resize_type):
+    if 1 == resize_type:
+        return ResizeType.MAINTAIN_ASPECT_RATIO
+    elif 2 == resize_type:
+        return ResizeType.MAINTAIN_PERCENTAGE_CHANGE
+    return ResizeType.NO_RESIZE_TYPE
+
 cdef Size to_size(
     int width,
     int height
@@ -33,32 +40,60 @@ def py_to_size(
 ) -> Size:
     return to_size(width, height)
 
+cdef float aspect_ratio(
+    Size size
+):
+    return size.width / size.height
+
+cdef float percent_change(
+    int step,
+    Size size
+):
+    return abs(step) / size.width
+
 cdef Size adjust_size(
     int step,
     Size size,
-    int maintain_aspect_ratio
+    ResizeType resize_type
 ):
     cdef int increase = 1
-    cdef double percent_change = 1.0
-    cdef Size step_size = to_size(0,0)
+    cdef float pct_change = percent_change(step, size)
     if step < 0:
         increase = 0
         step = abs(step)
     
-    if 0 < maintain_aspect_ratio:
-        percent_change = step / size.width
-        step_size = to_size(
-            int(round(percent_change * size.width)),
-            int(round(percent_change * size.height))
+    if ResizeType.MAINTAIN_ASPECT_RATIO == resize_type:
+        if 0 != increase:
+            return to_size(
+                size.width + step,
+                int(round((size.width + step) / aspect_ratio(size)))
+            )
+        else:
+            return to_size(
+                size.width - step,
+                int(round((size.width - step) / aspect_ratio(size)))
+            )
+    elif ResizeType.MAINTAIN_PERCENTAGE_CHANGE == resize_type:
+        if 0 != increase:
+            return to_size(
+                size.width + int(round(pct_change * size.width)),
+                size.height + int(round(pct_change * size.height))
+            )
+        else:
+            return to_size(
+                size.width - int(round(pct_change * size.width)),
+                size.height - int(round(pct_change * size.height))
+            )
+    if 0 != increase:
+        return to_size(
+            size.width + step,
+            size.height + step
         )
     else:
-        step_size = to_size(step, step)
-
-    if 0 != increase:
-        return to_size(size.width + step_size.width, size.height + step_size.height)
-    else:
-        return to_size(size.width - step_size.width, size.height - step_size.height)
-
+        return to_size(
+            size.width - step,
+            size.height - step,
+        )
 
 cdef Size transpose_size(
     Transpose transpose,
@@ -118,10 +153,10 @@ cdef SizeDistance calculate_closest_size_distance(
     Size size,
     int area,
     int step_size,
-    int maintain_aspect_ratio
+    ResizeType resize_type
 ):    
-    cdef Size grow_size = adjust_size(step_size, size, maintain_aspect_ratio)
-    cdef Size shrink_size = adjust_size(-1 * step_size, size, maintain_aspect_ratio)
+    cdef Size grow_size = adjust_size(step_size, size, resize_type)
+    cdef Size shrink_size = adjust_size(-1 * step_size, size, resize_type)
     cdef int grow_distance = abs(area - (grow_size.width * grow_size.height))
     cdef int shrink_distance = abs(area - (shrink_size.width * shrink_size.height))
 
@@ -139,7 +174,7 @@ cdef SampledResize sample_resize_to_area(
     Size size,
     int area,
     int step_size,
-    int maintain_aspect_ratio
+    ResizeType resize_type
 ):
     cdef int sampling_count = 0
     cdef Size last_size = size
@@ -151,7 +186,7 @@ cdef SampledResize sample_resize_to_area(
 
     while found_best == 0:
         sampling_count += 1
-        best_size_distance = calculate_closest_size_distance(last_size, area, step_size, maintain_aspect_ratio)
+        best_size_distance = calculate_closest_size_distance(last_size, area, step_size, resize_type)
         
         if sampling_count == 1:
             last_size_distance = best_size_distance
@@ -179,6 +214,6 @@ def py_sample_resize_to_area(
     Size size,
     int area,
     int step_size,
-    int maintain_aspect_ratio
+    ResizeType resize_type
 ) -> SampledResize:
-    return sample_resize_to_area(size, area, step_size, maintain_aspect_ratio)
+    return sample_resize_to_area(size, area, step_size, resize_type)

@@ -3,7 +3,7 @@ import argparse
 import sys
 import numpy as np
 import imagecloud_clis.cli_helpers as cli_helpers
-from imagecloud.position_box_size import Size
+from imagecloud.position_box_size import (ResizeType, RESIZE_TYPES, Size)
 from imagecloud.imagecloud_defaults import (
     DEFAULT_CLOUD_SIZE,
     DEFAULT_BACKGROUND_COLOR,
@@ -14,13 +14,13 @@ from imagecloud.imagecloud_defaults import (
     DEFAULT_MIN_IMAGE_SIZE,
     DEFAULT_MODE,
     DEFAULT_STEP_SIZE,
-    DEFAULT_MAINTAIN_ASPECT_RATIO
+    DEFAULT_RESIZE_TYPE
 )
 from imagecloud.imagecloud_defaults import (
     MASK_HELP,
     CLOUD_SIZE_HELP,
     STEP_SIZE_HELP,
-    MAINTAIN_ASPECT_RATIO_HELP,
+    RESIZE_TYPE_HELP,
     MAX_IMAGE_SIZE_HELP,
     MIN_IMAGE_SIZE_HELP,
     BACKGROUND_COLOR_HELP,
@@ -62,7 +62,7 @@ class GenerateCLIArguments(CLIBaseArguments):
         self.contour_color: str = parsedArgs.contour_color
         self.mask: str | None = parsedArgs.mask
         self.step_size: int = parsedArgs.step_size
-        self.maintain_aspect_ratio: bool = parsedArgs.maintain_aspect_ratio
+        self.resize_type: bool = parsedArgs.resize_type
         self.margin: int = parsedArgs.margin
         self.mode: str = parsedArgs.mode
         self.cloud_expansion_step_size: int = parsedArgs.cloud_expansion_step_size
@@ -138,17 +138,12 @@ class GenerateCLIArguments(CLIBaseArguments):
         )
 
         parser.add_argument(
-            '-maintain_aspect_ratio',
-            action='store_true',
-            help='Optional, {0}{1}'.format('(default) ' if DEFAULT_MAINTAIN_ASPECT_RATIO else '', MAINTAIN_ASPECT_RATIO_HELP)
+            '-resize_type',
+            default=DEFAULT_RESIZE_TYPE,
+            metavar='{0}'.format('|'.join(RESIZE_TYPES)),
+            type=lambda v: cli_helpers.is_resize_type(parser, v),
+            help='Optional, (default %(default)s) {0}'.format(RESIZE_TYPE_HELP)
         )
-        parser.add_argument(
-            '-no-maintain_aspect_ratio',
-            action='store_false',
-            dest='maintain_aspect_ratio',
-            help='Optional, {0}{1}'.format('' if DEFAULT_MAINTAIN_ASPECT_RATIO else '(default) ', MAINTAIN_ASPECT_RATIO_HELP)
-        )
-        parser.set_defaults(maintain_aspect_ratio=DEFAULT_MAINTAIN_ASPECT_RATIO)
 
         parser.add_argument(
             '-max_image_size',
@@ -216,7 +211,7 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
         max_image_size=args.max_image_size,
         min_image_size=args.min_image_size,
         image_step=args.step_size,
-        maintain_aspect_ratio=args.maintain_aspect_ratio,
+        resize_type=args.resize_type,
         contour_width=args.contour_width,
         contour_color=args.contour_color,
         margin=args.margin,

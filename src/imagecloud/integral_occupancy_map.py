@@ -2,6 +2,7 @@ import numpy as np
 from enum import IntEnum
 from imagecloud.position_box_size import (
     Point,
+    ResizeType,
     Size,
     BoxCoordinates
 )
@@ -93,7 +94,7 @@ class IntegralOccupancyMap(object):
         size: Size,
         min_size: Size,
         margin: int,
-        maintain_aspect_ratio: bool,
+        resize_type: ResizeType,
         step_size: int,
         random_state
     ) -> SampledFreeBoxResult:
@@ -105,7 +106,7 @@ class IntegralOccupancyMap(object):
                 Size.to_native(size),
                 Size.to_native(min_size),
                 margin,
-                1 if maintain_aspect_ratio else 0,
+                resize_type.value,
                 step_size,
                 random_state,
             )

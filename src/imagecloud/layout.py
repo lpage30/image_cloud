@@ -1,11 +1,8 @@
 from imagecloud.base_logger import BaseLogger
 from imagecloud.weighted_image import NamedImage
-from imagecloud.position_box_size import (Size, Position, BoxCoordinates)
+from imagecloud.position_box_size import ( ResizeType, RESIZE_TYPES, Size, Position, BoxCoordinates)
 import imagecloud.imagecloud_defaults as helper
 from imagecloud.imagecloud_helpers import (
-    parse_to_int,
-    parse_to_float,
-    parse_to_size,
     to_unused_filepath
 )
 from imagecloud.integral_occupancy_map import (
@@ -373,7 +370,7 @@ class Layout:
         max_images: int | None = None,
         min_image_size: Size | None = None,
         image_step: int | None = None,
-        maintain_aspect_ratio: bool | None = None,
+        resize_type: ResizeType | None = None,
         scale: float | None = None,
         margin: int | None = None,
         name: str | None = None
@@ -386,13 +383,13 @@ class Layout:
         for item in items:
             item.reservation_color = canvas.reservation_colors[item.reservation_no]
             
-        self.max_images = max_images if max_images is not None else parse_to_int(helper.DEFAULT_MAX_IMAGES)
-        self.min_image_size = min_image_size if min_image_size is not None else parse_to_size(helper.DEFAULT_MIN_IMAGE_SIZE)
-        self.image_step = image_step if image_step is not None else parse_to_int(helper.DEFAULT_STEP_SIZE)
-        self.maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio is not None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
-        self.scale = scale if scale is not None else parse_to_float(helper.DEFAULT_SCALE)
+        self.max_images = max_images if max_images is not None else int(helper.DEFAULT_MAX_IMAGES)
+        self.min_image_size = min_image_size if min_image_size is not None else int(helper.DEFAULT_MIN_IMAGE_SIZE)
+        self.image_step = image_step if image_step is not None else int(helper.DEFAULT_STEP_SIZE)
+        self.resize_type = resize_type if resize_type is not None else ResizeType[helper.DEFAULT_RESIZE_TYPE]
+        self.scale = scale if scale is not None else int(helper.DEFAULT_SCALE)
 
-        self.margin = margin if margin is not None else parse_to_int(helper.DEFAULT_MARGIN)
+        self.margin = margin if margin is not None else int(helper.DEFAULT_MARGIN)
     
     @property
     def name(self) -> str:
@@ -478,7 +475,7 @@ class Layout:
             LAYOUT_MIN_IMAGE_SIZE_WIDTH: self.min_image_size.width,
             LAYOUT_MIN_IMAGE_SIZE_HEIGHT: self.min_image_size.height,
             LAYOUT_IMAGE_STEP: self.image_step,
-            LAYOUT_MAINTAIN_ASPECT_RATIO: self.maintain_aspect_ratio,
+            LAYOUT_RESIZE_TYPE: self.resize_type.name,
             LAYOUT_SCALE: self.scale,
             LAYOUT_MARGIN: self.margin,
             LAYOUT_NAME: self.name
@@ -527,11 +524,11 @@ class Layout:
             max_images = int(layout_data[LAYOUT_MAX_IMAGES]) if LAYOUT_MAX_IMAGES in layout_data else None
             min_image_size = Size((int(layout_data[LAYOUT_MIN_IMAGE_SIZE_WIDTH]), int(layout_data[LAYOUT_MIN_IMAGE_SIZE_HEIGHT]))) if LAYOUT_MIN_IMAGE_SIZE_WIDTH in layout_data and LAYOUT_MIN_IMAGE_SIZE_HEIGHT in layout_data else None
             image_step = int(layout_data[LAYOUT_IMAGE_STEP]) if LAYOUT_IMAGE_STEP in layout_data else None
-            maintain_aspect_ratio = layout_data[LAYOUT_MAINTAIN_ASPECT_RATIO].lower() in ['true', 'yes', '1'] if LAYOUT_MAINTAIN_ASPECT_RATIO in layout_data else None
+            resize_type = ResizeType[layout_data[LAYOUT_RESIZE_TYPE]] if LAYOUT_RESIZE_TYPE in layout_data else None
             scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
             margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None
             name = layout_data[LAYOUT_NAME] if LAYOUT_NAME in layout_data else None       
-            return Layout(canvas, contour, items, max_images, min_image_size, image_step, maintain_aspect_ratio, scale, margin, name)
+            return Layout(canvas, contour, items, max_images, min_image_size, image_step, resize_type, scale, margin, name)
         except Exception as e:
             raise Exception(str(e))
 
@@ -543,8 +540,8 @@ LAYOUT_MIN_IMAGE_SIZE_HEIGHT = 'layout_min_image_size_height'
 LAYOUT_MIN_IMAGE_SIZE_HEIGHT_HELP = '<height>'
 LAYOUT_IMAGE_STEP = 'layout_image_step'
 LAYOUT_IMAGE_STEP_HELP = '<integer>'
-LAYOUT_MAINTAIN_ASPECT_RATIO = 'layout_maintain_aspect_ratio'
-LAYOUT_MAINTAIN_ASPECT_RATIO_HELP = 'True|False'
+LAYOUT_RESIZE_TYPE = 'layout_resize_type'
+LAYOUT_RESIZE_TYPE_HELP = '|'.join(RESIZE_TYPES)
 LAYOUT_SCALE = 'layout_scale'
 LAYOUT_SCALE_HELP = '<float>'
 LAYOUT_MARGIN = 'layout_margin'
@@ -556,7 +553,7 @@ LAYOUT_HEADERS = [
     LAYOUT_MIN_IMAGE_SIZE_WIDTH,
     LAYOUT_MIN_IMAGE_SIZE_HEIGHT,
     LAYOUT_IMAGE_STEP,
-    LAYOUT_MAINTAIN_ASPECT_RATIO,
+    LAYOUT_RESIZE_TYPE,
     LAYOUT_SCALE,
     LAYOUT_MARGIN,
     LAYOUT_NAME
@@ -566,7 +563,7 @@ LAYOUT_HEADERS_HELP = [
     LAYOUT_MIN_IMAGE_SIZE_WIDTH_HELP,
     LAYOUT_MIN_IMAGE_SIZE_HEIGHT_HELP,
     LAYOUT_IMAGE_STEP_HELP,
-    LAYOUT_MAINTAIN_ASPECT_RATIO_HELP,
+    LAYOUT_RESIZE_TYPE_HELP,
     LAYOUT_SCALE_HELP,
     LAYOUT_MARGIN_HELP,
     LAYOUT_NAME_HELP
@@ -628,7 +625,7 @@ LAYOUT_ITEM_SIZE_WIDTH_HELP = '<width>'
 LAYOUT_ITEM_SIZE_HEIGHT = 'layout_item_size_height'
 LAYOUT_ITEM_SIZE_HEIGHT_HELP = '<height>'
 LAYOUT_ITEM_ORIENTATION = 'layout_item_orientation'
-LAYOUT_ITEM_ORIENTATION_HELP = '<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE'
+LAYOUT_ITEM_ORIENTATION_HELP = '<empty>|{0}'.format('|'.join([member.name for member in Image.Transpose]))
 LAYOUT_ITEM_RESERVATION_POSITION_X = 'layout_item_reserved_position_x'
 LAYOUT_ITEM_RESERVATION_POSITION_X_HELP = '<x>'
 LAYOUT_ITEM_RESERVATION_POSITION_Y = 'layout_item_reserved_position_y'

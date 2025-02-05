@@ -1,6 +1,6 @@
 import datetime
 import os.path
-from imagecloud.position_box_size import Size
+from imagecloud.position_box_size import (ResizeType, RESIZE_TYPES, Size)
 
 def parse_to_int(s:str) -> int:
     if s == None or not(s.isdigit()):
@@ -21,6 +21,13 @@ def parse_to_existing_path(pathtype: str, value: str) -> str:
         raise ValueError('The {0} {1} does not exist!'.format(pathtype, value))
     else:
         return value
+
+def parse_to_resize_type(s: str) -> ResizeType:
+    for member in ResizeType:
+        if s.upper() == member.name:
+            return member
+    raise ValueError('{0} unsupported. Must be one of [{1}]'.format(s, '{0}'.format('|'.join(RESIZE_TYPES))))
+
     
 def to_unused_filepath(directory: str, name: str, suffix: str) -> str:
     filepath_prefix = os.path.join(directory, name)

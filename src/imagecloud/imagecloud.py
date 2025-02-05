@@ -3,7 +3,7 @@ from PIL import Image
 from random import Random
 import warnings
 import numpy as np
-from imagecloud.position_box_size import Size
+from imagecloud.position_box_size import ( ResizeType, Size )
 from imagecloud.imagecloud_helpers import (
     parse_to_int,
     parse_to_float,
@@ -60,7 +60,7 @@ class ImageCloud(object):
         Step size for the image. image_step > 1 might speed up computation but
         give a worse fit.
     
-    maintain_aspect_ratio: bool (default=helper.DEFAULT_MAINTAIN_ASPECT_RATIO)
+    resize_type: ResizeType (default=helper.DEFAULT_RESIZE_TYPE)
     
     scale : float (default=helper.DEFAULT_SCALE)
         Scaling between computation and drawing. For large word-cloud images,
@@ -89,7 +89,7 @@ class ImageCloud(object):
                  max_image_size: Size | None = None,
                  min_image_size: Size | None = None,
                  image_step: int | None = None,
-                 maintain_aspect_ratio: bool | None = None,
+                 resize_type: ResizeType | None = None,
                  scale: float | None = None,
                  contour_width: float | None = None,
                  contour_color: str | None = None,
@@ -104,7 +104,7 @@ class ImageCloud(object):
         self._max_image_size = max_image_size
         self._min_image_size = min_image_size if min_image_size is not None else parse_to_size(helper.DEFAULT_MIN_IMAGE_SIZE)
         self._image_step = image_step if image_step is not None else parse_to_int(helper.DEFAULT_STEP_SIZE)
-        self._maintain_aspect_ratio = maintain_aspect_ratio if maintain_aspect_ratio is not None else helper.DEFAULT_MAINTAIN_ASPECT_RATIO
+        self._resize_type = resize_type if resize_type is not None else helper.DEFAULT_RESIZE_TYPE
         self._scale = scale if scale is not None else parse_to_float(helper.DEFAULT_SCALE)
         self._contour_width = contour_width if contour_width is not None else parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
         self._contour_color = contour_color if contour_color is not None else helper.DEFAULT_CONTOUR_COLOR
@@ -139,8 +139,8 @@ class ImageCloud(object):
         return self._image_step
 
     @property
-    def maintain_aspect_ratio(self) -> bool:
-        return self._maintain_aspect_ratio
+    def resize_type(self) -> ResizeType:
+        return self._resize_type
 
     @property
     def layout(self) -> Layout | None:
@@ -160,7 +160,7 @@ class ImageCloud(object):
         proportional_images = resize_images_to_proportionally_fit(
             weighted_images,
             imagecloud_size,
-            self.maintain_aspect_ratio,
+            self.resize_type,
             self.image_step,
             self._margin,
             self._logger
@@ -193,7 +193,7 @@ class ImageCloud(object):
                 new_imagecloud_size = grow_size_by_step(
                     imagecloud_size, 
                     cloud_expansion_step_size, 
-                    self.maintain_aspect_ratio
+                    self.resize_type
                 )
                 self._logger.info('Expanded ImageCloud ({0} -> {1}) for dropped images ({2}/{3})'.format(
                     str(imagecloud_size),
@@ -293,7 +293,7 @@ class ImageCloud(object):
             layout.max_images,
             layout.min_image_size,
             layout.image_step,
-            layout.maintain_aspect_ratio,
+            layout.resize_type,
             layout.scale,
             layout.margin,
             layout.name + '.maximized'
@@ -374,7 +374,7 @@ class ImageCloud(object):
                 Size(image.size),
                 self._min_image_size,
                 self._margin,
-                self._maintain_aspect_ratio,
+                self._resize_type,
                 self._image_step,
                 random_state
             )
@@ -425,7 +425,7 @@ class ImageCloud(object):
             self._max_images,
             self._min_image_size,
             self._image_step,
-            self._maintain_aspect_ratio,
+            self._resize_type,
             self._scale,
             self._margin,
             self._name + '.layout'
@@ -466,7 +466,7 @@ class ImageCloud(object):
             None,
             layout.min_image_size,
             layout.image_step,
-            layout.maintain_aspect_ratio,
+            layout.resize_type,
             layout.scale,
             layout.contour.width,
             layout.contour.color,

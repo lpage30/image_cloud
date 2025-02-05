@@ -3,7 +3,7 @@ import os
 import csv
 from PIL import Image
 from imagecloud.imagecloud_helpers import TimeMeasure
-from imagecloud.position_box_size import Size
+from imagecloud.position_box_size import (ResizeType, Size)
 from imagecloud.native.position_box_size import py_sample_resize_to_area
 
 class NamedImage(object):
@@ -69,26 +69,26 @@ def calculate_distance(one: int, two: int) -> int:
 def grow_size_by_step(
     size: Size,
     step_size: int,
-    maintain_aspect_ratio: bool
+    resize_type: ResizeType
 ) -> Size:
-    return size.adjust(step_size, maintain_aspect_ratio)
+    return size.adjust(step_size, resize_type)
 
 def shrink_size_by_step(
     size: Size,
     step_size: int,
-    maintain_aspect_ratio: bool
+    resize_type: ResizeType
 ) -> Size:
-    return size.adjust(-step_size, maintain_aspect_ratio)
+    return size.adjust(-step_size, resize_type)
 
 def calculate_closest_size_distance(
     size: Size,
     target_area: int,
     step_size: int,
-    maintain_aspect_ratio: bool,
+    resize_type: ResizeType,
 ) -> tuple[Size, int]:
     
-    grown_size = grow_size_by_step(size, step_size, maintain_aspect_ratio)
-    shrink_size = shrink_size_by_step(size, step_size, maintain_aspect_ratio)
+    grown_size = grow_size_by_step(size, step_size, resize_type)
+    shrink_size = shrink_size_by_step(size, step_size, resize_type)
 
     grown_distance = calculate_distance(target_area, grown_size.area)
     shrink_distance = calculate_distance(target_area, shrink_size.area)
@@ -102,7 +102,7 @@ def calculate_closest_size_distance(
 def resize_images_to_proportionally_fit(
     weighted_images: list[WeightedImage],
     fit_size: Size,
-    maintain_aspect_ratio: bool,
+    resize_type: ResizeType,
     step_size: int,
     margin: int,
     logger: BaseLogger
@@ -133,7 +133,7 @@ def resize_images_to_proportionally_fit(
             Size.to_native(image_size),
             resize_area,
             step_size,
-            1 if maintain_aspect_ratio else 0
+            resize_type.value
         )
         sampling_total = int(native_sampled_resize['sampling_total'])
         sampled_size = Size.from_native(native_sampled_resize['new_size'])

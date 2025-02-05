@@ -1,11 +1,12 @@
 import argparse
 import os.path
-from imagecloud.position_box_size import Size
+from imagecloud.position_box_size import (ResizeType, RESIZE_TYPES, Size)
 from imagecloud.imagecloud_helpers import (
     parse_to_existing_path,
     parse_to_int,
     parse_to_float,
     parse_to_size,
+    parse_to_resize_type,
     to_unused_filepath,
 )
 
@@ -57,4 +58,11 @@ def to_name(input_filepath: str, output_file_suffix: str, existing_name: str | N
             to_unused_filepath(output_directory, name, output_file_suffix)
         ))[0]
     return name
+
+def is_resize_type(parser: argparse.ArgumentParser, value: str) -> ResizeType:
+    try:
+        return parse_to_resize_type(value)
+    except Exception as e:
+        parser.error(str(e))
+
 

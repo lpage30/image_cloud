@@ -3,6 +3,7 @@
 # cython: wraparound=False
 from imagecloud.native.position_box_size cimport (
      Position,
+     ResizeType,
      Size,
      BoxCoordinates,
      Transpose,
@@ -10,6 +11,7 @@ from imagecloud.native.position_box_size cimport (
      is_empty_box,
      to_position,
      to_box, 
+     to_resize_type,
      to_size,
      transpose_size,
      adjust_size,
@@ -90,7 +92,7 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
     Size size,
     Size min_size,
     int margin,
-    int maintain_aspect_ratio, # false(0)/true(non-zero),
+    ResizeType resize_type,
     int step_size,
     random_state
 ):
@@ -98,7 +100,7 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
     cdef int rotate = 0
     cdef Size new_size = size
     cdef int shrink_step_size = -1 * step_size
-    cdef Transpose orientation = Transpose.NONE
+    cdef Transpose orientation = Transpose.NO_TRANSPOSE
     cdef BoxCoordinates free_box
     cdef SampledFreeBoxResult result
 
@@ -117,7 +119,7 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
         free_box = find_free_box(
             occupancy_map,
             position_scratch_buffer,
-            adjust_size(margin, new_size, maintain_aspect_ratio),
+            adjust_size(margin, new_size, ResizeType.NO_RESIZE_TYPE),
             random_state
         )
         if not(is_empty_box(free_box)):
@@ -131,8 +133,8 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
         
         if 0 != rotate:
             new_size = untranspose_size(orientation, new_size)
-            new_size = adjust_size(shrink_step_size, new_size, maintain_aspect_ratio)
-            orientation = Transpose.NONE
+            new_size = adjust_size(shrink_step_size, new_size, resize_type)
+            orientation = Transpose.NO_TRANSPOSE
             rotate = 0
         else:
             rotate = 1
@@ -143,7 +145,7 @@ def py_sample_to_find_free_box(
     Size size,
     Size min_size,
     int margin,
-    int maintain_aspect_ratio, # false(0)/true(non-zero),
+    int resize_type,
     int step_size,
     random_state
 ) -> SampledFreeBoxResult:
@@ -153,7 +155,7 @@ def py_sample_to_find_free_box(
         size,
         min_size,
         margin,
-        maintain_aspect_ratio,
+        to_resize_type(resize_type),
         step_size,
         random_state
     )

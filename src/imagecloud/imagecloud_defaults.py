@@ -1,6 +1,7 @@
+from imagecloud.position_box_size import ResizeType
 DEFAULT_IMAGE_FORMAT = 'png'
 DEFAULT_CLOUD_SIZE = '400,200'
-DEFAULT_MAINTAIN_ASPECT_RATIO = True
+DEFAULT_RESIZE_TYPE = 'MAINTAIN_ASPECT_RATIO'
 DEFAULT_STEP_SIZE = '1'
 DEFAULT_MAX_IMAGE_SIZE = None
 DEFAULT_MIN_IMAGE_SIZE = '4,4'
@@ -45,7 +46,7 @@ while other entries will be free to draw on.\
 
 CLOUD_SIZE_HELP = 'width and height of canvas'
 
-MAINTAIN_ASPECT_RATIO_HELP = '''resize of images to fit will maintain aspect ratio'''
+RESIZE_TYPE_HELP = 'Image resizing can be done by maintaining aspect ratio ({0}), step/width percent change evenly applied ({1}), or simply step change ({2})'.format(ResizeType.MAINTAIN_ASPECT_RATIO.name, ResizeType.MAINTAIN_PERCENTAGE_CHANGE.name, ResizeType.NO_RESIZE_TYPE.name)
 STEP_SIZE_HELP = '''Step size for the image. 
 ste p> 1 might speed up computation
 but give a worse fit.

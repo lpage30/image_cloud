@@ -1,5 +1,13 @@
 from PIL import Image
+from enum import Enum
 import imagecloud.native.position_box_size as native
+
+class ResizeType(Enum):
+    NO_RESIZE_TYPE = -1
+    MAINTAIN_ASPECT_RATIO = 1
+    MAINTAIN_PERCENTAGE_CHANGE = 2
+
+RESIZE_TYPES = [member.name for member in ResizeType]
 class Point:
     x: int
     y: int
@@ -68,7 +76,14 @@ class Size:
     @property
     def area(self) -> int:
         return round(self.width * self.height)
+    
+    @property
+    def aspect_ratio(self) -> float:
+        return self.width / self.height
 
+    def percent_change(self, step: int) -> float:
+        return abs(step) / self.width
+    
     def transpose(self, transpose: Image.Transpose):
         if transpose in [Image.Transpose.ROTATE_90, Image.Transpose.ROTATE_270]:
             return Size((self.height, self.width))
@@ -79,25 +94,44 @@ class Size:
             return Size((self.height, self.width))
         return Size((self.width, self.height))
 
-    def adjust(self, step: int, maintain_aspect_ratio: bool):
+    def adjust(self, step: int, resize_type: ResizeType):
         increase: bool = 0 <= step
         step = abs(step)
-        if maintain_aspect_ratio:
-            percent_change = step / self.width
-            step_size = (
-                round(percent_change * self.width),
-                round(percent_change * self.height)
-            )
-        else:
-            step_size = (
-                step,
-                step
-            )
-        if increase:
-            return Size(((self.width + step_size[0]), (self.height + step_size[1])))
-        else:
-            return Size(((self.width - step_size[0]), (self.height - step_size[1])))
-    
+        match resize_type:
+            case ResizeType.MAINTAIN_ASPECT_RATIO:
+                if increase:
+                    return Size((
+                        self.width + step,
+                        int(round((self.width + step) / self.aspect_ratio()))
+                    ))
+                else:
+                    return Size((
+                        self.width - step,
+                        int(round((self.width - step) / self.aspect_ratio()))
+                    ))
+            case ResizeType.MAINTAIN_PERCENTAGE_CHANGE:
+                    if increase:
+                        return Size((
+                            self.width + int(round(self.percent_change(step) * self.width)),
+                            self.height + int(round(self.percent_change(step) * self.height))
+                        ))
+                    else:
+                        return Size((
+                            self.width - int(round(self.percent_change(step) * self.width)),
+                            self.height - int(round(self.percent_change(step) * self.height))
+                        ))
+            case _:
+                if increase:
+                    return Size((
+                        self.width + step,
+                        self.height + step
+                    ))
+                else:
+                    return Size((
+                        self.width - step,
+                        self.height - step,
+                    ))
+
     def scale(self, scale: float):
         return Size((
             round(self.width * scale),

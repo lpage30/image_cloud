@@ -1,7 +1,8 @@
 # cython: language_level=3
 # cython: boundscheck=False
 # cython: wraparound=False
-from imagecloud.native.position_box_size cimport ( 
+from imagecloud.native.position_box_size cimport (
+    ResizeType,
     Size,
     BoxCoordinates,
     Transpose
@@ -32,7 +33,7 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
     Size size,
     Size min_size,
     int margin,
-    int maintain_aspect_ratio, # false(0)/true(non-zero),
+    ResizeType resize_type,
     int step_size,
     random_state
 )

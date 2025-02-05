@@ -17,6 +17,6 @@ generate_imagecloud \
     -output_image_format $image_type \
     -cloud_size $linkedin_background_size \
     -min_image_size $reasonable_smallest_size \
-    -maintain_aspect_ratio \
+    -resize_type MAINTAIN_ASPECT_RATIO \
     -show_imagecloud \
     -log_filepath $generate_log
