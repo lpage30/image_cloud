@@ -60,6 +60,7 @@ class IntegralOccupancyMap(object):
         self._map_size = map_size
         # integral is our 'target' for placement of images
         self._occupancy_map: OccupancyMapType  = np.zeros(map_size.tuple, dtype=OccupancyMapDataType)
+        self._position_scratch_buffer: OccupancyMapType = np.zeros(map_size.width * map_size.height, dtype=OccupancyMapDataType)
     
     @property
     def map_size(self) -> Size:
@@ -74,8 +75,17 @@ class IntegralOccupancyMap(object):
         self._map_size = Size((map.shape[0], map.shape[1]))
         self._occupancy_map = map
 
-    def find_free_box(self, size: Size, random_state) -> BoxCoordinates | None:
-        result = native.py_find_free_box(self._occupancy_map, Size.to_native(size), random_state)
+    def find_free_box(
+        self,
+        size: Size,
+        random_state
+    ) -> BoxCoordinates | None:
+        result = native.py_find_free_box(
+            self._occupancy_map,
+            self._position_scratch_buffer,
+            Size.to_native(size),
+            random_state
+        )
         return BoxCoordinates.from_native(result) if result is not None else result
 
     def sample_to_find_free_box(
@@ -91,6 +101,7 @@ class IntegralOccupancyMap(object):
         return SampledFreeBoxResult.from_native(
             native.py_sample_to_find_free_box(
                 self._occupancy_map,
+                self._position_scratch_buffer,
                 Size.to_native(size),
                 Size.to_native(min_size),
                 margin,

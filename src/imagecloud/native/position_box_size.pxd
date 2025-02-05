@@ -34,30 +34,58 @@ cdef struct SampledResize:
     int sampling_total
     Size new_size    
 
-cdef to_position(int left, int upper)
+cdef Position to_position(
+    int left,
+    int upper
+)
 
-cdef empty_position()
+cdef Size to_size(
+    int width,
+    int height
+)
 
-cdef is_empty_position(Position pos)
+cdef Size adjust_size(
+    int step,
+    Size size,
+    int maintain_aspect_ratio
+)
 
-cdef to_size(int width, int height)
+cdef Size transpose_size(
+    Transpose transpose,
+    Size size
+)
 
-cdef empty_size()
+cdef Size untranspose_size(
+    Transpose transpose,
+    Size size
+)
 
-cdef adjust_size(int step, Size size, int maintain_aspect_ratio)
+cdef BoxCoordinates to_box(
+    Position position,
+    Size size
+)
 
-cdef transpose_size(Transpose transpose, Size size)
+cdef BoxCoordinates empty_box()
 
-cdef untranspose_size(Transpose transpose, Size size)
+cdef int is_empty_box(
+    BoxCoordinates box
+)
 
-cdef to_box(Position position, Size size)
+cdef BoxCoordinates remove_margin(
+    int margin,
+    BoxCoordinates box
+)
 
-cdef empty_box()
+cdef SizeDistance calculate_closest_size_distance(
+    Size size,
+    int area,
+    int step_size,
+    int maintain_aspect_ratio
+)
 
-cdef is_empty_box(BoxCoordinates box)
-
-cdef remove_margin(int margin, BoxCoordinates box)
-
-cdef calculate_closest_size_distance(Size size, int area, int step_size, int maintain_aspect_ratio)
-
-cdef sample_resize_to_area(Size size, int area, int step_size, int maintain_aspect_ratio)
+cdef SampledResize sample_resize_to_area(
+    Size size,
+    int area,
+    int step_size,
+    int maintain_aspect_ratio
+)

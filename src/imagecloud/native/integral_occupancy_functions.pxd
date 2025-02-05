@@ -15,12 +15,20 @@ cdef struct SampledFreeBoxResult:
     BoxCoordinates actual_box
     Transpose orientation
 
-cdef is_free_position(unsigned int[:,:] occupancy_map, BoxCoordinates box)
-
-cdef find_free_box(unsigned int[:,:] occupancy_map, Size size, random_state)
-
-cdef sample_to_find_free_box(
+cdef int is_free_position(
     unsigned int[:,:] occupancy_map, 
+    BoxCoordinates box
+)
+
+cdef BoxCoordinates find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size, random_state
+)
+
+cdef SampledFreeBoxResult sample_to_find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
     Size size,
     Size min_size,
     int margin,
