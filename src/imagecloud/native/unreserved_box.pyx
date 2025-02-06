@@ -19,7 +19,7 @@ from imagecloud.native.position_box_size cimport (
      untranspose_size
 )
 
-cdef int is_free_position(
+cdef int is_unreserved_position(
     unsigned int[:,:] occupancy_map, 
     BoxCoordinates box
 ):
@@ -29,7 +29,7 @@ cdef int is_free_position(
                 return 0
     return 1
 
-cdef BoxCoordinates find_free_box(
+cdef BoxCoordinates find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -40,13 +40,13 @@ cdef BoxCoordinates find_free_box(
         occupancy_map.shape[1] - size.height
     )
     cdef position_index = 0
-    cdef free_position_index = 0
+    cdef unreserved_position_index = 0
     
     cdef int x = 0
     cdef int y = 0
     for x in range(scan_size.width):
         for y in range(scan_size.height):
-            if is_free_position(occupancy_map, to_box(to_position(x, y), size)):
+            if is_unreserved_position(occupancy_map, to_box(to_position(x, y), size)):
                 position_scratch_buffer[position_index] = x
                 position_scratch_buffer[position_index + 1] = y
                 position_index = position_index + 2
@@ -56,16 +56,16 @@ cdef BoxCoordinates find_free_box(
 
     # positions is an array of ints extended with position left and upper
     # we want to randomly pick the index of a position left
-    free_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
+    unreserved_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
     return to_box(
         to_position(
-            position_scratch_buffer[free_position_index],
-            position_scratch_buffer[free_position_index + 1]
+            position_scratch_buffer[unreserved_position_index],
+            position_scratch_buffer[unreserved_position_index + 1]
         ),
         size
     )
 
-cdef SampledFreeBoxResult sample_to_find_free_box(
+cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map, 
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -80,8 +80,8 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
     cdef Size new_size = size
     cdef int shrink_step_size = -1 * step_size
     cdef Transpose orientation = Transpose.NO_TRANSPOSE
-    cdef BoxCoordinates free_box
-    cdef SampledFreeBoxResult result
+    cdef BoxCoordinates unreserved_box
+    cdef SampledUnreservedBoxResult result
 
     while True:
         sampling_count += 1
@@ -95,18 +95,18 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
             orientation = Transpose.ROTATE_90
             new_size = transpose_size(orientation, new_size)
                 
-        free_box = find_free_box(
+        unreserved_box = find_unreserved_box(
             occupancy_map,
             position_scratch_buffer,
             adjust_size(margin, new_size, ResizeType.NO_RESIZE_TYPE),
             random_state
         )
-        if not(is_empty_box(free_box)):
+        if not(is_empty_box(unreserved_box)):
             result.found = 1
             result.sampling_total = sampling_count
             result.new_size = new_size
-            result.free_box = free_box
-            result.actual_box = remove_margin(margin, free_box)
+            result.unreserved_box = unreserved_box
+            result.actual_box = remove_margin(margin, unreserved_box)
             result.orientation = orientation
             return result
         
@@ -119,19 +119,19 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
             rotate = 1
 
 
-def py_is_free_position(
+def py_is_unreserved_position(
     unsigned int[:,:] occupancy_map,
     BoxCoordinates box
 ) -> bool:
-    return True if 0 != is_free_position(occupancy_map, box) else False
+    return True if 0 != is_unreserved_position(occupancy_map, box) else False
 
-def py_find_free_box(
+def py_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
     random_state
 ) -> BoxCoordinates | None:
-    cdef BoxCoordinates result = find_free_box(
+    cdef BoxCoordinates result = find_unreserved_box(
         occupancy_map, 
         position_scratch_buffer, 
         size,
@@ -139,7 +139,7 @@ def py_find_free_box(
     )
     return None if is_empty_box(result) else result
 
-def py_sample_to_find_free_box(
+def py_sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -148,8 +148,8 @@ def py_sample_to_find_free_box(
     int resize_type,
     int step_size,
     random_state
-) -> SampledFreeBoxResult:
-    return sample_to_find_free_box(
+) -> SampledUnreservedBoxResult:
+    return sample_to_find_unreserved_box(
         occupancy_map,
         position_scratch_buffer,
         size,

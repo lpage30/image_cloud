@@ -8,26 +8,26 @@ from imagecloud.native.position_box_size cimport (
     Transpose
 )
 
-cdef struct SampledFreeBoxResult:
+cdef struct SampledUnreservedBoxResult:
     int found
     int sampling_total
     Size new_size
-    BoxCoordinates free_box
+    BoxCoordinates unreserved_box
     BoxCoordinates actual_box
     Transpose orientation
 
-cdef int is_free_position(
+cdef int is_unreserved_position(
     unsigned int[:,:] occupancy_map, 
     BoxCoordinates box
 )
 
-cdef BoxCoordinates find_free_box(
+cdef BoxCoordinates find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size, random_state
 )
 
-cdef SampledFreeBoxResult sample_to_find_free_box(
+cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,

@@ -16,7 +16,7 @@ from imagecloud.weighted_image import (
     resize_images_to_proportionally_fit,
     grow_size_by_step,
 )
-from imagecloud.integral_occupancy_map import IntegralOccupancyMap, SampledFreeBoxResult
+from imagecloud.integral_occupancy_map import IntegralOccupancyMap, SampledUnreservedBoxResult
 import imagecloud.imagecloud_defaults as helper
 from imagecloud.layout import (
     LayoutContour,
@@ -372,7 +372,7 @@ class ImageCloud(object):
 
             self._logger.info('Finding position in ImageCloud')
             
-            sampled_result: SampledFreeBoxResult = occupancy.sample_to_find_free_box(
+            sampled_result: SampledUnreservedBoxResult = occupancy.sample_to_find_unreserved_box(
                 Size(image.size),
                 self._min_image_size,
                 self._margin,
@@ -390,12 +390,12 @@ class ImageCloud(object):
                     measure.latency_str()
                 ))
                 reservation_no = index + 1
-                occupancy.reserve_box(sampled_result.free_box, reservation_no)
+                occupancy.reserve_box(sampled_result.unreserved_box, reservation_no)
                 layout_items.append(LayoutItem(
                     proportional_images[index],
                     sampled_result.actual_box,
                     sampled_result.orientation,
-                    sampled_result.free_box,
+                    sampled_result.unreserved_box,
                     reservation_no
                 ))
             else:

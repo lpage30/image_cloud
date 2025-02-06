@@ -72,7 +72,7 @@ Error compiling Cython file:
 ...
 )
 
-cdef struct SampledFreeBoxResult:
+cdef struct SampledUnreservedBoxResult:
     int found
     int sampling_total
     Size new_size
@@ -85,11 +85,11 @@ Error compiling Cython file:
 ------------------------------------------------------------
 ...
 
-cdef struct SampledFreeBoxResult:
+cdef struct SampledUnreservedBoxResult:
     int found
     int sampling_total
     Size new_size
-    BoxCoordinates free_box
+    BoxCoordinates unreserved_box
     ^
 ------------------------------------------------------------
 
@@ -98,11 +98,11 @@ src/imagecloud/native/integral_occupancy_functions.pxd:15:4: 'BoxCoordinates' is
 Error compiling Cython file:
 ------------------------------------------------------------
 ...
-cdef struct SampledFreeBoxResult:
+cdef struct SampledUnreservedBoxResult:
     int found
     int sampling_total
     Size new_size
-    BoxCoordinates free_box
+    BoxCoordinates unreserved_box
     BoxCoordinates actual_box
     ^
 ------------------------------------------------------------
@@ -115,7 +115,7 @@ Error compiling Cython file:
     int found
     int sampling_total
     Size new_size
-    BoxCoordinates free_box
+    BoxCoordinates unreserved_box
     BoxCoordinates actual_box
     Transpose orientation
     ^
@@ -129,7 +129,7 @@ Error compiling Cython file:
     BoxCoordinates actual_box
     Transpose orientation
 
-cdef int is_free_position(
+cdef int is_unreserved_position(
     unsigned int[:,:] occupancy_map, 
     BoxCoordinates box
     ^
@@ -140,12 +140,12 @@ src/imagecloud/native/integral_occupancy_functions.pxd:21:4: 'BoxCoordinates' is
 Error compiling Cython file:
 ------------------------------------------------------------
 ...
-cdef int is_free_position(
+cdef int is_unreserved_position(
     unsigned int[:,:] occupancy_map, 
     BoxCoordinates box
 )
 
-cdef BoxCoordinates find_free_box(
+cdef BoxCoordinates find_unreserved_box(
      ^
 ------------------------------------------------------------
 
@@ -156,7 +156,7 @@ Error compiling Cython file:
 ...
 )
 
-cdef BoxCoordinates find_free_box(
+cdef BoxCoordinates find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size, random_state
@@ -170,7 +170,7 @@ Error compiling Cython file:
 ...
 )
 
-cdef SampledFreeBoxResult sample_to_find_free_box(
+cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -183,7 +183,7 @@ Error compiling Cython file:
 ------------------------------------------------------------
 ...
 
-cdef SampledFreeBoxResult sample_to_find_free_box(
+cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -345,7 +345,7 @@ Error compiling Cython file:
      untranspose_size
 )
 
-cdef int is_free_position(
+cdef int is_unreserved_position(
     unsigned int[:,:] occupancy_map, 
     BoxCoordinates box
     ^
@@ -359,7 +359,7 @@ Error compiling Cython file:
                 return 0
     return 1
 
-def py_is_free_position(
+def py_is_unreserved_position(
     unsigned int[:,:] occupancy_map,
     BoxCoordinates box
     ^
@@ -373,9 +373,9 @@ Error compiling Cython file:
     unsigned int[:,:] occupancy_map,
     BoxCoordinates box
 ) -> bool:
-    return True if 0 != is_free_position(occupancy_map, box) else False
+    return True if 0 != is_unreserved_position(occupancy_map, box) else False
 
-cdef BoxCoordinates find_free_box(
+cdef BoxCoordinates find_unreserved_box(
      ^
 ------------------------------------------------------------
 
@@ -384,9 +384,9 @@ src/imagecloud/native/integral_occupancy_functions.pyx:38:5: 'BoxCoordinates' is
 Error compiling Cython file:
 ------------------------------------------------------------
 ...
-    return True if 0 != is_free_position(occupancy_map, box) else False
+    return True if 0 != is_unreserved_position(occupancy_map, box) else False
 
-cdef BoxCoordinates find_free_box(
+cdef BoxCoordinates find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -400,7 +400,7 @@ Error compiling Cython file:
 ...
 
 
-def py_find_free_box(
+def py_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -414,7 +414,7 @@ Error compiling Cython file:
 ...
     return None if is_empty_box(result) else result
 
-cdef SampledFreeBoxResult sample_to_find_free_box(
+cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map, 
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -427,7 +427,7 @@ Error compiling Cython file:
 ------------------------------------------------------------
 ...
 
-cdef SampledFreeBoxResult sample_to_find_free_box(
+cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map, 
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -456,7 +456,7 @@ Error compiling Cython file:
 ...
             rotate = 1
 
-def py_sample_to_find_free_box(
+def py_sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -469,7 +469,7 @@ Error compiling Cython file:
 ------------------------------------------------------------
 ...
 
-def py_sample_to_find_free_box(
+def py_sample_to_find_unreserved_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
@@ -501,7 +501,7 @@ Error compiling Cython file:
     Size size,
     random_state
 ) -> BoxCoordinates | None:
-    cdef BoxCoordinates result = find_free_box(
+    cdef BoxCoordinates result = find_unreserved_box(
          ^
 ------------------------------------------------------------
 
@@ -543,7 +543,7 @@ Error compiling Cython file:
     cdef Size new_size = size
     cdef int shrink_step_size = -1 * step_size
     cdef Transpose orientation = Transpose.NONE
-    cdef BoxCoordinates free_box
+    cdef BoxCoordinates unreserved_box
          ^
 ------------------------------------------------------------
 
@@ -573,7 +573,7 @@ Error compiling Cython file:
     cdef int y = 0
     for x in range(scan_size.width):
         for y in range(scan_size.height):
-            if is_free_position(occupancy_map, to_box(to_position(x, y), size)):
+            if is_unreserved_position(occupancy_map, to_box(to_position(x, y), size)):
                                                ^
 ------------------------------------------------------------
 
@@ -587,7 +587,7 @@ Error compiling Cython file:
     cdef int y = 0
     for x in range(scan_size.width):
         for y in range(scan_size.height):
-            if is_free_position(occupancy_map, to_box(to_position(x, y), size)):
+            if is_unreserved_position(occupancy_map, to_box(to_position(x, y), size)):
                                                       ^
 ------------------------------------------------------------
 
@@ -616,7 +616,7 @@ Error compiling Cython file:
 
     # positions is an array of ints extended with position left and upper
     # we want to randomly pick the index of a position left
-    free_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
+    unreserved_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
     return to_box(
            ^
 ------------------------------------------------------------
@@ -629,7 +629,7 @@ Error compiling Cython file:
 
     # positions is an array of ints extended with position left and upper
     # we want to randomly pick the index of a position left
-    free_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
+    unreserved_position_index = random_state.randint(0, (position_index//2) - 1 ) * 2
     return to_box(
         to_position(
         ^
@@ -700,7 +700,7 @@ Error compiling Cython file:
 ...
             new_size = transpose_size(orientation, new_size)
                 
-        free_box = find_free_box(
+        unreserved_box = find_unreserved_box(
             occupancy_map,
             position_scratch_buffer,
             adjust_size(margin, new_size, ResizeType.NONE),
@@ -714,7 +714,7 @@ Error compiling Cython file:
 ...
             new_size = transpose_size(orientation, new_size)
                 
-        free_box = find_free_box(
+        unreserved_box = find_unreserved_box(
             occupancy_map,
             position_scratch_buffer,
             adjust_size(margin, new_size, ResizeType.NONE),
@@ -731,7 +731,7 @@ Error compiling Cython file:
             adjust_size(margin, new_size, ResizeType.NONE),
             random_state
         )
-        if not(is_empty_box(free_box)):
+        if not(is_empty_box(unreserved_box)):
                ^
 ------------------------------------------------------------
 
@@ -740,12 +740,12 @@ src/imagecloud/native/integral_occupancy_functions.pyx:125:15: 'is_empty_box' is
 Error compiling Cython file:
 ------------------------------------------------------------
 ...
-        if not(is_empty_box(free_box)):
+        if not(is_empty_box(unreserved_box)):
             result.found = 1
             result.sampling_total = sampling_count
             result.new_size = new_size
-            result.free_box = free_box
-            result.actual_box = remove_margin(margin, free_box)
+            result.unreserved_box = unreserved_box
+            result.actual_box = remove_margin(margin, unreserved_box)
                                 ^
 ------------------------------------------------------------
 
@@ -754,7 +754,7 @@ src/imagecloud/native/integral_occupancy_functions.pyx:130:32: 'remove_margin' i
 Error compiling Cython file:
 ------------------------------------------------------------
 ...
-            result.actual_box = remove_margin(margin, free_box)
+            result.actual_box = remove_margin(margin, unreserved_box)
             result.orientation = orientation
             return result
         
@@ -814,12 +814,12 @@ Error compiling Cython file:
     int resize_type,
     int step_size,
     random_state
-) -> SampledFreeBoxResult:
-    return sample_to_find_free_box(
+) -> SampledUnreservedBoxResult:
+    return sample_to_find_unreserved_box(
                                   ^
 ------------------------------------------------------------
 
-src/imagecloud/native/integral_occupancy_functions.pyx:152:34: Cannot convert 'SampledFreeBoxResult' to Python object
+src/imagecloud/native/integral_occupancy_functions.pyx:152:34: Cannot convert 'SampledUnreservedBoxResult' to Python object
 Compiling src/imagecloud/native/integral_occupancy_functions.pyx because it changed.
 Compiling src/imagecloud/native/position_box_size.pyx because it changed.
 [1/2] Cythonizing src/imagecloud/native/integral_occupancy_functions.pyx

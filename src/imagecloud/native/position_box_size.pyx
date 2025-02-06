@@ -145,7 +145,7 @@ cdef BoxCoordinates remove_margin(
     int margin,
     BoxCoordinates box
 ) noexcept nogil:
-    cdef int padding = int(margin / 2)
+    cdef int padding = <int>(margin / 2)
     cdef Position pos = to_position(box.left + padding, box.upper + padding)
     cdef Size size = to_size((box.right - padding) - pos.left, (box.lower - padding) - pos.upper)
     return to_box(pos, size)
@@ -251,8 +251,8 @@ cdef int quarter_box(
 ) noexcept nogil:
     cdef int new_index = index
     cdef BoxPartitionType next_partition_type
-    cdef int partition_width = int(round((box.right - box.left) / 2))
-    cdef int partition_height = int(round((box.lower - box.upper) / 2))
+    cdef int partition_width = <int>round((box.right - box.left) / 2)
+    cdef int partition_height = <int>round((box.lower - box.upper) / 2)
     cdef BoxCoordinates left_upper
     cdef BoxCoordinates right_upper
     cdef BoxCoordinates right_lower

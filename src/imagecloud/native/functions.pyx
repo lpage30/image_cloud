@@ -12,13 +12,18 @@ from imagecloud.native.position_box_size cimport (
 
 srand(time(NULL))
 
-cdef int to_1d_array_len(Size size) noexcept nogil:
-    return size.width * size.height
+cdef int to_one_dimension_array_len(
+    Size two_dimension_array_size
+) noexcept nogil:
+    return two_dimension_array_size.width * two_dimension_array_size.height
 
-cdef Position to_2d_array_position(int oneDArrayPosition, int twoDArrayWidth) noexcept nogil:
+cdef Position to_two_dimension_array_position(
+    int one_dimension_array_position,
+    int two_dimension_array_width
+) noexcept nogil:
     return to_position(
-        int(oneDArrayPosition / twoDArrayWidth),
-        int(fmod(oneDArrayPosition, twoDArrayWidth))
+        <int>(one_dimension_array_position / two_dimension_array_width),
+        <int>fmod(one_dimension_array_position, two_dimension_array_width)
     )
 
 cdef double ln_rand() noexcept nogil:

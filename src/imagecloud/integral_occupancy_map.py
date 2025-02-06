@@ -7,8 +7,8 @@ from imagecloud.position_box_size import (
     BoxCoordinates
 )
 from PIL import Image
-import imagecloud.native.integral_occupancy_functions as native
-import imagecloud.native.parallel.free_box as native_parallel
+import imagecloud.native.unreserved_box as native
+import imagecloud.native.parallel.p_unreserved_box as native_parallel
 
 
 OccupancyMapDataType = np.uint32
@@ -19,14 +19,14 @@ class Direction(IntEnum):
     DOWN = 3
     RIGHT = 4
 
-class SampledFreeBoxResult(object):
+class SampledUnreservedBoxResult(object):
     
     def __init__(
         self, 
         found: bool,
         sampling_total: int,
         new_size: Size,
-        free_box: BoxCoordinates | None = None,
+        unreserved_box: BoxCoordinates | None = None,
         actual_box: BoxCoordinates | None = None,
         orientation: Image.Transpose | None = None,
         parallelism: int | None = None
@@ -34,27 +34,27 @@ class SampledFreeBoxResult(object):
         self.found = found
         self.sampling_total = sampling_total
         self.new_size = new_size
-        self.free_box = free_box
+        self.unreserved_box = unreserved_box
         self.actual_box = actual_box
         self.orientation = orientation
         self.parallelism = parallelism if parallelism is not None else 1
     
     @staticmethod
-    def from_native(native_sampledfreeboxresult):
-        if 0 != native_sampledfreeboxresult['found']:
-            return  SampledFreeBoxResult(
+    def from_native(native_sampledunreservedboxresult):
+        if 0 != native_sampledunreservedboxresult['found']:
+            return  SampledUnreservedBoxResult(
                 True,
-                native_sampledfreeboxresult['sampling_total'],
-                Size.from_native(native_sampledfreeboxresult['new_size']),
-                BoxCoordinates.from_native(native_sampledfreeboxresult['free_box']),
-                BoxCoordinates.from_native(native_sampledfreeboxresult['actual_box']),
-                Image.Transpose(native_sampledfreeboxresult['orientation']) if 0 <= native_sampledfreeboxresult['orientation'] else None
+                native_sampledunreservedboxresult['sampling_total'],
+                Size.from_native(native_sampledunreservedboxresult['new_size']),
+                BoxCoordinates.from_native(native_sampledunreservedboxresult['unreserved_box']),
+                BoxCoordinates.from_native(native_sampledunreservedboxresult['actual_box']),
+                Image.Transpose(native_sampledunreservedboxresult['orientation']) if 0 <= native_sampledunreservedboxresult['orientation'] else None
             )
         else:
-            return  SampledFreeBoxResult(
+            return  SampledUnreservedBoxResult(
                 False,
-                native_sampledfreeboxresult['sampling_total'],
-                Size.from_native(native_sampledfreeboxresult['new_size']),
+                native_sampledunreservedboxresult['sampling_total'],
+                Size.from_native(native_sampledunreservedboxresult['new_size']),
             )
 
 
@@ -83,20 +83,20 @@ class IntegralOccupancyMap(object):
         self._map_size = Size((map.shape[0], map.shape[1]))
         self._occupancy_map = map
 
-    def find_free_box(
+    def find_unreserved_box(
         self,
         size: Size,
         random_state
     ) -> BoxCoordinates | None:
         if 1 < self._parallelism:
-            result = native_parallel.py_p_find_free_box(
+            result = native_parallel.py_p_find_unreserved_box(
                 self._occupancy_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
                 self._parallelism
             )
         else:
-            result = native.py_find_free_box(
+            result = native.py_find_unreserved_box(
                 self._occupancy_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
@@ -104,7 +104,7 @@ class IntegralOccupancyMap(object):
             )
         return BoxCoordinates.from_native(result) if result is not None else result
 
-    def sample_to_find_free_box(
+    def sample_to_find_unreserved_box(
         self, 
         size: Size,
         min_size: Size,
@@ -112,10 +112,10 @@ class IntegralOccupancyMap(object):
         resize_type: ResizeType,
         step_size: int,
         random_state
-    ) -> SampledFreeBoxResult:
+    ) -> SampledUnreservedBoxResult:
 
         if 1 < self._parallelism:
-            result = native_parallel.py_p_sample_to_find_free_box(
+            result = native_parallel.py_p_sample_to_find_unreserved_box(
                 self._occupancy_map,
                 Size.to_native(size),
                 Size.to_native(min_size),
@@ -125,7 +125,7 @@ class IntegralOccupancyMap(object):
                 self._parallelism
             )
         else:
-            result = native.py_sample_to_find_free_box(
+            result = native.py_sample_to_find_unreserved_box(
                 self._occupancy_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
@@ -135,7 +135,7 @@ class IntegralOccupancyMap(object):
                 step_size,
                 random_state,
             )
-        return SampledFreeBoxResult.from_native(result)
+        return SampledUnreservedBoxResult.from_native(result)
     
     def reserve_box(self, box: BoxCoordinates, reservation_no: int) -> None:
         if reservation_no == 0:
@@ -194,7 +194,7 @@ class IntegralOccupancyMap(object):
         result: BoxCoordinates | None = None
         for y in range(box.upper - 1, -1, -1): # expand up
             new_edge = Point((box.upper_left.x, y))
-            if self._is_free_position(BoxCoordinates.from_points(new_edge, box_edge)):
+            if self._is_unreserved_position(BoxCoordinates.from_points(new_edge, box_edge)):
                 result = BoxCoordinates.from_points(new_edge, box.lower_right)
             else:
                 return result
@@ -206,7 +206,7 @@ class IntegralOccupancyMap(object):
         result: BoxCoordinates | None = None
         for x in range(box.left - 1, -1, -1): # expand left
             new_edge = Point((x, box.upper_left.y))
-            if self._is_free_position(BoxCoordinates.from_points(new_edge,box_edge)):
+            if self._is_unreserved_position(BoxCoordinates.from_points(new_edge,box_edge)):
                 result = BoxCoordinates.from_points(new_edge, box.lower_right)
             else:
                 return result
@@ -218,7 +218,7 @@ class IntegralOccupancyMap(object):
         result: BoxCoordinates | None = None
         for y in range(box.lower + 1, self.map_size.height): # expand down
             new_edge = Point((box.lower_right.x, y))
-            if self._is_free_position(BoxCoordinates.from_points(box_edge, new_edge)):
+            if self._is_unreserved_position(BoxCoordinates.from_points(box_edge, new_edge)):
                 result = BoxCoordinates.from_points(box.upper_left, new_edge)
             else:
                 return result
@@ -231,22 +231,22 @@ class IntegralOccupancyMap(object):
         result: BoxCoordinates | None = None
         for x in range(box.right + 1, self.map_size.width): # expand right
             new_edge = Point((x, box.lower_right.y))
-            if self._is_free_position(BoxCoordinates.from_points(box_edge, new_edge)):
+            if self._is_unreserved_position(BoxCoordinates.from_points(box_edge, new_edge)):
                 result = BoxCoordinates.from_points(box.upper_left, new_edge)
             else:
                 return result
         
         return result
 
-    def _is_free_position(self, box: BoxCoordinates) -> bool:
+    def _is_unreserved_position(self, box: BoxCoordinates) -> bool:
         if 1 < self._parallelism:
-            result = native_parallel.py_p_is_free_position(
+            result = native_parallel.py_p_is_unreserved_position(
                 self.occupancy_map,
                 BoxCoordinates.to_native(box),
                 self._parallelism
             )
         else:
-            result = native.py_is_free_position(
+            result = native.py_is_unreserved_position(
                 self.occupancy_map,
                 BoxCoordinates.to_native(box)
             )
