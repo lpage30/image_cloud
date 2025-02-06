@@ -108,13 +108,13 @@ class GenerateCLIArguments(CLIBaseArguments):
         parser.add_argument(
             '-maximize_empty_space',
             action='store_true',
-            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('(default) ' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '')
+            help='Optional {0}maximize images, after generation, to fill surrounding empty space.'.format('(default) ' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '')
         )
         parser.add_argument(
             '-no-maximize_empty_space',
             action='store_false',
             dest='maximize_empty_space',
-            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '(default) ')
+            help='Optional {0}maximize images, after generation, to fill surrounding empty space.'.format('' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '(default) ')
         )
         parser.set_defaults(maximize_empty_space=DEFAULT_MAXIMIZE_EMPTY_SPACE)
 
@@ -241,9 +241,9 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
         args.logger.info('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
         layout = image_cloud.maximize_empty_space(layout)
 
-    reconstructed_occupancy_map = layout.reconstruct_occupancy_map()
-    if not(np.array_equal(layout.canvas.occupancy_map, reconstructed_occupancy_map)):
-        args.logger.info('Warning occupancy map from generation not same as reconstructed from images.')
+    reconstructed_reservation_map = layout.reconstruct_reservation_map()
+    if not(np.array_equal(layout.canvas.reservation_map, reconstructed_reservation_map)):
+        args.logger.info('Warning reservations map from generation not same as reconstructed from images.')
     
     collage = layout.to_image(args.logger)
 

@@ -19,7 +19,7 @@ cdef struct PSampledUnreservedBoxResult:
 
 
 cdef int p_is_unreserved_position(
-    unsigned int[:,:] occupancy_map, 
+    unsigned int[:,:] reservation_map, 
     BoxCoordinates box,
     int parallelism,
     BoxCoordinates[::1] box_scratch_buffer
@@ -27,7 +27,7 @@ cdef int p_is_unreserved_position(
 
 
 cdef BoxCoordinates p_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     Size size,
     int parallelism,
     Position[::1] position_scratch_buffer,
@@ -36,7 +36,7 @@ cdef BoxCoordinates p_find_unreserved_box(
 
 
 cdef PSampledUnreservedBoxResult p_sample_to_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     Size size,
     Size min_size,
     int margin,

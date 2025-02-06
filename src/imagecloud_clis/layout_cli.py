@@ -45,13 +45,13 @@ class LayoutCLIrguments(CLIBaseArguments):
         parser.add_argument(
             '-maximize_empty_space',
             action='store_true',
-            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('(default) ' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '')
+            help='Optional {0}maximize images, after generation, to fill surrounding empty space.'.format('(default) ' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '')
         )
         parser.add_argument(
             '-no-maximize_empty_space',
             action='store_false',
             dest='maximize_empty_space',
-            help='Optional {0}maximize images, after generation, to fill surrouding empty space.'.format('' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '(default) ')
+            help='Optional {0}maximize images, after generation, to fill surrounding empty space.'.format('' if DEFAULT_MAXIMIZE_EMPTY_SPACE else '(default) ')
         )
         parser.set_defaults(maximize_empty_space=DEFAULT_MAXIMIZE_EMPTY_SPACE)
 

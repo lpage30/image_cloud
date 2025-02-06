@@ -11,8 +11,8 @@ import imagecloud.native.unreserved_box as native
 import imagecloud.native.parallel.p_unreserved_box as native_parallel
 
 
-OccupancyMapDataType = np.uint32
-OccupancyMapType = np.ndarray[OccupancyMapDataType, OccupancyMapDataType]
+ReservationMapDataType = np.uint32
+ReservationMapType = np.ndarray[ReservationMapDataType, ReservationMapDataType]
 class Direction(IntEnum):
     UP = 1
     LEFT = 2
@@ -59,15 +59,15 @@ class SampledUnreservedBoxResult(object):
 
 
 # extrapolated from https://github.com/amueller/word_cloud/blob/main/wordcloud/wordcloud.py
-class IntegralOccupancyMap(object):
+class Reservations(object):
     def __init__(self,
                  map_size: Size = Size((0,0)),
                  parallelism: int = 1
         ):
         self._map_size = map_size
         # integral is our 'target' for placement of images
-        self._occupancy_map: OccupancyMapType  = np.zeros(map_size.tuple, dtype=OccupancyMapDataType)
-        self._position_scratch_buffer: OccupancyMapType = np.zeros(map_size.width * map_size.height, dtype=OccupancyMapDataType),
+        self._reservation_map: ReservationMapType  = np.zeros(map_size.tuple, dtype=ReservationMapDataType)
+        self._position_scratch_buffer: ReservationMapType = np.zeros(map_size.width * map_size.height, dtype=ReservationMapDataType),
         self._parallelism: int = parallelism
     
     @property
@@ -75,13 +75,13 @@ class IntegralOccupancyMap(object):
         return self._map_size
     
     @property
-    def occupancy_map(self) -> OccupancyMapType:
-        return self._occupancy_map
+    def reservation_map(self) -> ReservationMapType:
+        return self._reservation_map
 
-    @occupancy_map.setter
-    def occupancy_map(self, map: OccupancyMapType) -> None:
+    @reservation_map.setter
+    def reservation_map(self, map: ReservationMapType) -> None:
         self._map_size = Size((map.shape[0], map.shape[1]))
-        self._occupancy_map = map
+        self._reservation_map = map
 
     def find_unreserved_box(
         self,
@@ -90,14 +90,14 @@ class IntegralOccupancyMap(object):
     ) -> BoxCoordinates | None:
         if 1 < self._parallelism:
             result = native_parallel.py_p_find_unreserved_box(
-                self._occupancy_map,
+                self._reservation_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
                 self._parallelism
             )
         else:
             result = native.py_find_unreserved_box(
-                self._occupancy_map,
+                self._reservation_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
                 random_state
@@ -116,7 +116,7 @@ class IntegralOccupancyMap(object):
 
         if 1 < self._parallelism:
             result = native_parallel.py_p_sample_to_find_unreserved_box(
-                self._occupancy_map,
+                self._reservation_map,
                 Size.to_native(size),
                 Size.to_native(min_size),
                 margin,
@@ -126,7 +126,7 @@ class IntegralOccupancyMap(object):
             )
         else:
             result = native.py_sample_to_find_unreserved_box(
-                self._occupancy_map,
+                self._reservation_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
                 Size.to_native(min_size),
@@ -142,7 +142,7 @@ class IntegralOccupancyMap(object):
             raise ValueError('reservation_number cannot be zero')
         for x in range(box.left, box.right):
             for y in range(box.upper, box.lower):
-                self.occupancy_map[x, y] = reservation_no
+                self.reservation_map[x, y] = reservation_no
     
     def find_expanded_box_versions(self, box: BoxCoordinates) -> list[BoxCoordinates] | None:
         possible_boxset: set[BoxCoordinates] = set()
@@ -165,11 +165,11 @@ class IntegralOccupancyMap(object):
         
         
     @staticmethod
-    def create_occupancy_map(map_size: Size, reservations: list[BoxCoordinates]) -> OccupancyMapType:
-        integral = IntegralOccupancyMap(map_size)
+    def create_reservation_map(map_size: Size, reservations: list[BoxCoordinates]) -> ReservationMapType:
+        integral = Reservations(map_size)
         for i in range(len(reservations)):
             integral.reserve_box(reservations[i], i + 1)
-        return integral.occupancy_map
+        return integral.reservation_map
 
     def _find_expanded_boxes(self, direction: Direction, boxes: list[BoxCoordinates]) -> list[BoxCoordinates]:
         result: list[BoxCoordinates] = list()
@@ -241,13 +241,13 @@ class IntegralOccupancyMap(object):
     def _is_unreserved_position(self, box: BoxCoordinates) -> bool:
         if 1 < self._parallelism:
             result = native_parallel.py_p_is_unreserved_position(
-                self.occupancy_map,
+                self.reservation_map,
                 BoxCoordinates.to_native(box),
                 self._parallelism
             )
         else:
             result = native.py_is_unreserved_position(
-                self.occupancy_map,
+                self.reservation_map,
                 BoxCoordinates.to_native(box)
             )
         return result

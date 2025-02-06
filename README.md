@@ -64,9 +64,9 @@ options:
                         step > 0 the cloud will expand by this amount in a loop until all images fit into it.
                         step > 1 might speed up computation but give a worse fit.
   -maximize_empty_space
-                        Optional maximize images, after generation, to fill surrouding empty space.
+                        Optional maximize images, after generation, to fill surrounding empty space.
   -no-maximize_empty_space
-                        Optional (default) maximize images, after generation, to fill surrouding empty space.
+                        Optional (default) maximize images, after generation, to fill surrounding empty space.
   -margin <number>      Optional, (default 1) The gap to allow between images.
   -min_image_size "<width>,<height>"
                         Optional, (default 4,4) Smallest image size to use.
@@ -108,9 +108,10 @@ csv file for weighted images with following format:
 ### layout_imagecloud
 ```
 usage: layout_imagecloud [-h] -i <csv_filepath> [-output_directory <output-directory-path>]
-                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
-                         [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
-                         [-log_filepath <log-filepath>] [-scale <float>] [-maximize_empty_space] [-no-maximize_empty_space]
+                         [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                         [-show_imagecloud] [-no-show_imagecloud] [-show_imagecloud_reservation_chart]
+                         [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose] [-log_filepath <log-filepath>]
+                         [-scale <float>] [-maximize_empty_space] [-no-maximize_empty_space]
 
             Layout and show a generated 'ImageCloud' from its layout csv file
             
@@ -119,8 +120,8 @@ options:
   -h, --help            show this help message and exit
   -i, --input <csv_filepath>
                         Required, csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:
-                        "layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_resize_type","layout_scale","layout_margin","layout_name","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
-                        <integer>,<width>,<height>,<integer>,NO_RESIZE_TYPE|MAINTAIN_ASPECT_RATIO|MAINTAIN_PERCENTAGE_CHANGE,<float>,<image-margin>,<name>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
+                        "layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_resize_type","layout_scale","layout_margin","layout_name","layout_parallelism","layout_latency","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_reservation_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no","layout_item_latency"
+                        <integer>,<width>,<height>,<integer>,NO_RESIZE_TYPE|MAINTAIN_ASPECT_RATIO|MAINTAIN_PERCENTAGE_CHANGE,<float>,<image-margin>,<name>,<integer>,<string>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-reservation_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_reservation_map>,<string>
   -output_directory <output-directory-path>
                         Optional, output directory for all output
   -output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm
@@ -137,15 +138,15 @@ options:
                         Optional, all output logging will also be written to this logfile
   -scale <float>        Optional, (default 1.0) scale up/down all images
   -maximize_empty_space
-                        Optional maximize images, after generation, to fill surrouding empty space.
+                        Optional maximize images, after generation, to fill surrounding empty space.
   -no-maximize_empty_space
-                        Optional (default) maximize images, after generation, to fill surrouding empty space.
+                        Optional (default) maximize images, after generation, to fill surrounding empty space.
   ```
 #### CSV to import
 csv file representing 1 Layout Contour, 1 Layout Canvas and N Layout Items:
 ```csv
-"layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_resize_type","layout_scale","layout_margin","layout_name","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_occupancy_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no"
-<integer>,<width>,<height>,<integer>,NO_RESIZE_TYPE|MAINTAIN_ASPECT_RATIO|MAINTAIN_PERCENTAGE_CHANGE,<float>,<image-margin>,<name>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-occupancy_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_occupancy_map>
+"layout_max_images","layout_min_image_size_width","layout_min_image_size_height","layout_image_step","layout_resize_type","layout_scale","layout_margin","layout_name","layout_parallelism","layout_latency","layout_canvas_name","layout_canvas_mode","layout_canvas_background_color","layout_canvas_size_width","layout_canvas_size_height","layout_canvas_reservation_map_csv_filepath","layout_contour_mask_image_filepath","layout_contour_width","layout_contour_color","layout_item_image_filepath","layout_item_position_x","layout_item_position_y","layout_item_size_width","layout_item_size_height","layout_item_orientation","layout_item_reserved_position_x","layout_item_reserved_position_y","layout_item_reserved_size_width","layout_item_reserved_size_height","layout_item_reservation_no","layout_item_latency"
+<integer>,<width>,<height>,<integer>,NO_RESIZE_TYPE|MAINTAIN_ASPECT_RATIO|MAINTAIN_PERCENTAGE_CHANGE,<float>,<image-margin>,<name>,<integer>,<string>,<name>,1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N,<empty>|<any-color-name>,<width>,<height>,<csv-filepath-of-reservation_map>,<empty>|<filepath-of-image-used-as-mask>,<float>,<any-color-name>,<filepath-of-image-to-paste>,<x>,<y>,<width>,<height>,<empty>|FLIP_LEFT_RIGHT|FLIP_TOP_BOTTOM|ROTATE_90|ROTATE_180|ROTATE_270|TRANSPOSE|TRANSVERSE,<x>,<y>,<width>,<height>,<empty>|<reservation_no_in_reservation_map>,<string>
 ```
 #### Sample layout script
 `sample-layout` is an example of how the `layout_imagecloud` could be used. This example builds off the `sample-generate` to operate on its result by maximizing the empty-space, if any, surrounding the images in the image-cloud.

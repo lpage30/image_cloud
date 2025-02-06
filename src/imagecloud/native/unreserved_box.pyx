@@ -20,24 +20,24 @@ from imagecloud.native.position_box_size cimport (
 )
 
 cdef int is_unreserved_position(
-    unsigned int[:,:] occupancy_map, 
+    unsigned int[:,:] reservation_map, 
     BoxCoordinates box
-):
+) noexcept nogil:
     for x in range(box.left, box.right):
         for y in range(box.upper, box.lower):
-            if occupancy_map[x, y] != 0:
+            if reservation_map[x, y] != 0:
                 return 0
     return 1
 
 cdef BoxCoordinates find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
     random_state
 ):
     cdef Size scan_size = to_size(
-        occupancy_map.shape[0] - size.width, 
-        occupancy_map.shape[1] - size.height
+        reservation_map.shape[0] - size.width, 
+        reservation_map.shape[1] - size.height
     )
     cdef position_index = 0
     cdef unreserved_position_index = 0
@@ -46,7 +46,7 @@ cdef BoxCoordinates find_unreserved_box(
     cdef int y = 0
     for x in range(scan_size.width):
         for y in range(scan_size.height):
-            if is_unreserved_position(occupancy_map, to_box(to_position(x, y), size)):
+            if is_unreserved_position(reservation_map, to_box(to_position(x, y), size)):
                 position_scratch_buffer[position_index] = x
                 position_scratch_buffer[position_index + 1] = y
                 position_index = position_index + 2
@@ -66,7 +66,7 @@ cdef BoxCoordinates find_unreserved_box(
     )
 
 cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
-    unsigned int[:,:] occupancy_map, 
+    unsigned int[:,:] reservation_map, 
     unsigned int[:] position_scratch_buffer,
     Size size,
     Size min_size,
@@ -96,7 +96,7 @@ cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
             new_size = transpose_size(orientation, new_size)
                 
         unreserved_box = find_unreserved_box(
-            occupancy_map,
+            reservation_map,
             position_scratch_buffer,
             adjust_size(margin, new_size, ResizeType.NO_RESIZE_TYPE),
             random_state
@@ -120,19 +120,19 @@ cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
 
 
 def py_is_unreserved_position(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     BoxCoordinates box
 ) -> bool:
-    return True if 0 != is_unreserved_position(occupancy_map, box) else False
+    return True if 0 != is_unreserved_position(reservation_map, box) else False
 
 def py_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
     random_state
 ) -> BoxCoordinates | None:
     cdef BoxCoordinates result = find_unreserved_box(
-        occupancy_map, 
+        reservation_map, 
         position_scratch_buffer, 
         size,
         random_state
@@ -140,7 +140,7 @@ def py_find_unreserved_box(
     return None if is_empty_box(result) else result
 
 def py_sample_to_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
     Size min_size,
@@ -150,7 +150,7 @@ def py_sample_to_find_unreserved_box(
     random_state
 ) -> SampledUnreservedBoxResult:
     return sample_to_find_unreserved_box(
-        occupancy_map,
+        reservation_map,
         position_scratch_buffer,
         size,
         min_size,

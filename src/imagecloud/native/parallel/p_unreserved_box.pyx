@@ -12,6 +12,7 @@ from imagecloud.native.functions cimport (
     to_one_dimension_array_len,
     to_two_dimension_array_position
 )
+from imagecloud.native.unreserved_box cimport is_unreserved_position
 from imagecloud.native.position_box_size cimport (
     adjust_size,
     BoxCoordinates,
@@ -40,24 +41,10 @@ cdef BoxPartitionType parallelism_to_partition_type(int parallelism) noexcept no
     elif parallelism <= BoxPartitionType.SIXTEEN:
         return BoxPartitionType.SIXTEEN
     else:
-        return BoxPartitionType.SIXTY_FOUR
-        
-
-
-cdef int is_unreserved_position(
-    unsigned int[:,:] occupancy_map, 
-    BoxCoordinates box
-) noexcept nogil:
-
-    for x in range(box.left, box.right):
-        for y in range(box.upper, box.lower):
-            if occupancy_map[x, y] != 0:
-                return 0
-    return 1
-
+        return BoxPartitionType.SIXTY_FOUR 
 
 cdef int p_is_unreserved_position(
-    unsigned int[:,:] occupancy_map, 
+    unsigned int[:,:] reservation_map, 
     BoxCoordinates box,
     int parallelism,
     BoxCoordinates[::1] box_scratch_buffer
@@ -74,7 +61,7 @@ cdef int p_is_unreserved_position(
     
     with nogil, parallel(num_threads=parallelism):
         for i in prange(partition_count):
-            result = is_unreserved_position(occupancy_map, partitions[i])
+            result = is_unreserved_position(reservation_map, partitions[i])
             if 0 == result:
                 break
     return result
@@ -82,7 +69,7 @@ cdef int p_is_unreserved_position(
 
 
 cdef BoxCoordinates p_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     Size size,
     int parallelism,
     Position[::1] position_scratch_buffer,
@@ -90,8 +77,8 @@ cdef BoxCoordinates p_find_unreserved_box(
 ) noexcept nogil:
 
     cdef Size scan_size = to_size(
-        occupancy_map.shape[0] - size.width, 
-        occupancy_map.shape[1] - size.height
+        reservation_map.shape[0] - size.width, 
+        reservation_map.shape[1] - size.height
     )
     cdef int total_points = to_one_dimension_array_len(scan_size)
     cdef Position pos = to_position(0,0)
@@ -102,7 +89,7 @@ cdef BoxCoordinates p_find_unreserved_box(
     with nogil, parallel(num_threads=parallelism):
         for p in prange(total_points):
             pos = to_two_dimension_array_position(p, scan_size.width)
-            if 1 == p_is_unreserved_position(occupancy_map, to_box(pos, size), parallelism, box_scratch_buffer):
+            if 1 == p_is_unreserved_position(reservation_map, to_box(pos, size), parallelism, box_scratch_buffer):
                 pos_index = apos_index.fetch_add(1)
                 position_scratch_buffer[pos_index] = pos
 
@@ -116,7 +103,7 @@ cdef BoxCoordinates p_find_unreserved_box(
 
 
 cdef PSampledUnreservedBoxResult p_sample_to_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     Size size,
     Size min_size,
     int margin,
@@ -153,7 +140,7 @@ cdef PSampledUnreservedBoxResult p_sample_to_find_unreserved_box(
                 new_size = transpose_size(orientation, new_size)
                 
             unreserved_box = p_find_unreserved_box(
-                occupancy_map,
+                reservation_map,
                 adjust_size(margin, new_size, ResizeType.NO_RESIZE_TYPE),
                 parallelism,
                 position_scratch_buffer,
@@ -177,24 +164,24 @@ cdef PSampledUnreservedBoxResult p_sample_to_find_unreserved_box(
 
 
 def py_p_is_unreserved_position(
-    unsigned int[:,:] occupancy_map, 
+    unsigned int[:,:] reservation_map, 
     BoxCoordinates box,
     int parallelism,
     
 ) -> bool:
     cdef BoxCoordinates[::1] box_scratch_buffer = create_box_array(parallelism_to_partition_type(parallelism))
-    return True if 0 != p_is_unreserved_position(occupancy_map, box, parallelism, box_scratch_buffer) else False
+    return True if 0 != p_is_unreserved_position(reservation_map, box, parallelism, box_scratch_buffer) else False
 
 def py_p_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     Size size,
     int parallelism,
 ) -> BoxCoordinates | None:
-    cdef Position[::1] position_scratch_buffer = create_position_array(occupancy_map.shape[0] * occupancy_map.shape[1])
+    cdef Position[::1] position_scratch_buffer = create_position_array(reservation_map.shape[0] * reservation_map.shape[1])
     cdef BoxCoordinates[::1] box_scratch_buffer = create_box_array(parallelism_to_partition_type(parallelism))
     
     cdef BoxCoordinates result = p_find_unreserved_box(
-        occupancy_map, 
+        reservation_map, 
         size,
         parallelism,
         position_scratch_buffer,
@@ -203,7 +190,7 @@ def py_p_find_unreserved_box(
     return None if is_empty_box(result) else result
 
 def py_p_sample_to_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     Size size,
     Size min_size,
     int margin,
@@ -212,11 +199,11 @@ def py_p_sample_to_find_unreserved_box(
     int parallelism
 ) -> PSampledUnreservedBoxResult:
 
-    cdef Position[::1] position_scratch_buffer = create_position_array(occupancy_map.shape[0] * occupancy_map.shape[1])
+    cdef Position[::1] position_scratch_buffer = create_position_array(reservation_map.shape[0] * reservation_map.shape[1])
     cdef BoxCoordinates[::1] box_scratch_buffer = create_box_array(parallelism_to_partition_type(parallelism))
 
     return p_sample_to_find_unreserved_box(
-        occupancy_map,
+        reservation_map,
         size,
         min_size,
         margin,

@@ -1,14 +1,20 @@
 from imagecloud.base_logger import BaseLogger
 from imagecloud.weighted_image import NamedImage
-from imagecloud.position_box_size import ( ResizeType, RESIZE_TYPES, Size, Position, BoxCoordinates)
+from imagecloud.position_box_size import ( 
+    ResizeType,
+    RESIZE_TYPES,
+    Size,
+    Position,
+    BoxCoordinates
+)
 import imagecloud.imagecloud_defaults as helper
 from imagecloud.imagecloud_helpers import (
     to_unused_filepath
 )
-from imagecloud.integral_occupancy_map import (
-    IntegralOccupancyMap,
-    OccupancyMapType, 
-    OccupancyMapDataType
+from imagecloud.reservations import (
+    Reservations,
+    ReservationMapType, 
+    ReservationMapDataType
 )
 import numpy as np
 import matplotlib.patches as mpatches
@@ -49,15 +55,15 @@ class LayoutCanvas:
         size: Size,
         mode: str,
         background_color: str | None,
-        occupancy_map: OccupancyMapType | None,
+        reservation_map: ReservationMapType | None,
         name: str | None = None
     ) -> None:
         self._name = name if name else 'imagecloud'
         self._size = size
         self._mode = mode
         self._background_color = background_color
-        self._occupancy_map: OccupancyMapType = occupancy_map if occupancy_map is not None else np.zeros(size, dtype=OccupancyMapDataType)
-        self._reservation_colors = [*generate_colors(ColorSource.PICKED, self._occupancy_map.max() + 1)]
+        self._reservation_map: ReservationMapType = reservation_map if reservation_map is not None else np.zeros(size, dtype=ReservationMapDataType)
+        self._reservation_colors = [*generate_colors(ColorSource.PICKED, self._reservation_map.max() + 1)]
 
     
     @property
@@ -81,8 +87,8 @@ class LayoutCanvas:
         return self._background_color
     
     @property
-    def occupancy_map(self) -> OccupancyMapType:
-        return self._occupancy_map
+    def reservation_map(self) -> ReservationMapType:
+        return self._reservation_map
     
     @property
     def reservation_colors(self) -> list[Color]:
@@ -99,21 +105,21 @@ class LayoutCanvas:
     def to_reservation_image(self) -> NamedImage:
         image = Image.new(
             'P',
-            (self.occupancy_map.shape[0], self.occupancy_map.shape[1])
+            (self.reservation_map.shape[0], self.reservation_map.shape[1])
         )
         image.putpalette(to_ImagePalette(self.reservation_colors))
         pixels = image.load()
-        for x in range(self.occupancy_map.shape[0]):
-            for y in range(self.occupancy_map.shape[1]):
-                pixels[x, y] = int(self.occupancy_map[x,y])
+        for x in range(self.reservation_map.shape[0]):
+            for y in range(self.reservation_map.shape[1]):
+                pixels[x, y] = int(self.reservation_map[x,y])
         
-        return NamedImage(image, '{0}.occupancy_map'.format(self.name))
+        return NamedImage(image, '{0}.reservation_map'.format(self.name))
     
     def write(self, layout_directory: str) -> Dict[str,Any]:
-        occupancy_csv_filepath = to_unused_filepath(layout_directory, '{0}.occupancy_map'.format(self.name), 'csv')
+        reservation_map_csv_filepath = to_unused_filepath(layout_directory, '{0}.reservation_map'.format(self.name), 'csv')
         np.savetxt(
-            fname=occupancy_csv_filepath,
-            X=self._occupancy_map,
+            fname=reservation_map_csv_filepath,
+            X=self._reservation_map,
             fmt='%d',
             delimiter=','
         )
@@ -123,7 +129,7 @@ class LayoutCanvas:
             LAYOUT_CANVAS_BACKGROUND_COLOR: self.background_color if self.background_color is not None else '',
             LAYOUT_CANVAS_SIZE_WIDTH: self.size.width,
             LAYOUT_CANVAS_SIZE_HEIGHT: self.size.height,
-            LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH: occupancy_csv_filepath
+            LAYOUT_CANVAS_RESERVATION_MAP_FILEPATH: reservation_map_csv_filepath
         }
 
     @staticmethod
@@ -140,10 +146,10 @@ class LayoutCanvas:
             row[LAYOUT_CANVAS_MODE],
             row[LAYOUT_CANVAS_BACKGROUND_COLOR] if not(is_empty(row[LAYOUT_CANVAS_BACKGROUND_COLOR])) else None,
             np.loadtxt(
-                fname=to_existing_filepath(row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH], layout_directory),
-                dtype=OccupancyMapDataType,
+                fname=to_existing_filepath(row[LAYOUT_CANVAS_RESERVATION_MAP_FILEPATH], layout_directory),
+                dtype=ReservationMapDataType,
                 delimiter=','
-            ) if not(is_empty(row[LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH])) else None,
+            ) if not(is_empty(row[LAYOUT_CANVAS_RESERVATION_MAP_FILEPATH])) else None,
             row[LAYOUT_CANVAS_NAME] if not(is_empty(row[LAYOUT_CANVAS_NAME])) else None
         )
 
@@ -238,7 +244,8 @@ class LayoutItem:
         placement_box: BoxCoordinates,
         orientation: Image.Transpose | None,
         reservation_box: BoxCoordinates,        
-        reservation_no: int
+        reservation_no: int,
+        latency_str: str = ''
     ) -> None:
         
         self._original_image = image.original_named_image
@@ -247,6 +254,7 @@ class LayoutItem:
         self._reservation_box = reservation_box
         self._reservation_no = reservation_no
         self._reservation_color = None
+        self._latency_str = latency_str
     
     @property
     def name(self) -> str:
@@ -323,7 +331,8 @@ class LayoutItem:
             LAYOUT_ITEM_RESERVATION_POSITION_Y: self.reservation_box.position.upper,
             LAYOUT_ITEM_RESERVATION_SIZE_WIDTH: self.reservation_box.size.width,
             LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT: self.reservation_box.size.height,
-            LAYOUT_ITEM_RESERVATION_NO: self.reservation_no
+            LAYOUT_ITEM_RESERVATION_NO: self.reservation_no,
+            LAYOUT_ITEM_LATENCY: self._latency_str
         }
 
     @staticmethod
@@ -358,7 +367,8 @@ class LayoutItem:
             placement_box,
             Image.Transpose[row[LAYOUT_ITEM_ORIENTATION]] if not(is_empty(row[LAYOUT_ITEM_ORIENTATION])) else None,
             reservation_box,
-            int(row[LAYOUT_ITEM_RESERVATION_NO]) if not(is_empty(row[LAYOUT_ITEM_RESERVATION_NO])) else row_no
+            int(row[LAYOUT_ITEM_RESERVATION_NO]) if not(is_empty(row[LAYOUT_ITEM_RESERVATION_NO])) else row_no,
+            row[LAYOUT_ITEM_LATENCY] if not(is_empty(row[LAYOUT_ITEM_LATENCY])) else ''
         )
 
 class Layout:
@@ -373,8 +383,9 @@ class Layout:
         resize_type: ResizeType | None = None,
         scale: float | None = None,
         margin: int | None = None,
-        name: str | None = None
-        
+        name: str | None = None,
+        parallelism: int | None = None,
+        latency_str: str = ''
     ) -> None:
         self._name = name if name else 'imagecloud.layout'
         self._canvas = canvas
@@ -390,6 +401,8 @@ class Layout:
         self.scale = scale if scale is not None else int(helper.DEFAULT_SCALE)
 
         self.margin = margin if margin is not None else int(helper.DEFAULT_MARGIN)
+        self.parallelism = parallelism if parallelism is not None else int(helper.DEFAULT_PARALLELISM)
+        self._latency_str = latency_str
     
     @property
     def name(self) -> str:
@@ -411,8 +424,8 @@ class Layout:
     def items(self) -> list[LayoutItem]:
         return self._items
     
-    def reconstruct_occupancy_map(self) -> OccupancyMapType:
-        return IntegralOccupancyMap.create_occupancy_map(
+    def reconstruct_reservation_map(self) -> ReservationMapType:
+        return Reservations.create_reservation_map(
             self.canvas.size,
             [item.reservation_box for item in self.items]
         )
@@ -478,7 +491,9 @@ class Layout:
             LAYOUT_RESIZE_TYPE: self.resize_type.name,
             LAYOUT_SCALE: self.scale,
             LAYOUT_MARGIN: self.margin,
-            LAYOUT_NAME: self.name
+            LAYOUT_NAME: self.name,
+            LAYOUT_PARALLELISM: self.parallelism,
+            LAYOUT_LATENCY: self._latency_str
         }
         with open(csv_filepath, 'w') as file:
             csv_writer = csv.DictWriter(file, fieldnames=LAYOUT_CSV_HEADERS)
@@ -527,8 +542,23 @@ class Layout:
             resize_type = ResizeType[layout_data[LAYOUT_RESIZE_TYPE]] if LAYOUT_RESIZE_TYPE in layout_data else None
             scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
             margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None
-            name = layout_data[LAYOUT_NAME] if LAYOUT_NAME in layout_data else None       
-            return Layout(canvas, contour, items, max_images, min_image_size, image_step, resize_type, scale, margin, name)
+            name = layout_data[LAYOUT_NAME] if LAYOUT_NAME in layout_data else None  
+            parallelism = int(layout_data[LAYOUT_PARALLELISM]) if LAYOUT_PARALLELISM in layout_data else None
+            latency_str = layout_data[LAYOUT_LATENCY] if LAYOUT_LATENCY in layout_data else ''
+            return Layout(
+                canvas,
+                contour,
+                items,
+                max_images,
+                min_image_size,
+                image_step,
+                resize_type,
+                scale,
+                margin,
+                name,
+                parallelism,
+                latency_str
+            )
         except Exception as e:
             raise Exception(str(e))
 
@@ -548,6 +578,10 @@ LAYOUT_MARGIN = 'layout_margin'
 LAYOUT_MARGIN_HELP = '<image-margin>'
 LAYOUT_NAME = 'layout_name'
 LAYOUT_NAME_HELP = '<name>'
+LAYOUT_PARALLELISM = 'layout_parallelism'
+LAYOUT_PARALLELISM_HELP = '<integer>'
+LAYOUT_LATENCY = 'layout_latency'
+LAYOUT_LATENCY_HELP = '<string>'
 LAYOUT_HEADERS = [
     LAYOUT_MAX_IMAGES,
     LAYOUT_MIN_IMAGE_SIZE_WIDTH,
@@ -556,7 +590,9 @@ LAYOUT_HEADERS = [
     LAYOUT_RESIZE_TYPE,
     LAYOUT_SCALE,
     LAYOUT_MARGIN,
-    LAYOUT_NAME
+    LAYOUT_NAME,
+    LAYOUT_PARALLELISM,
+    LAYOUT_LATENCY
 ]
 LAYOUT_HEADERS_HELP = [
     LAYOUT_MAX_IMAGES_HELP,
@@ -566,7 +602,9 @@ LAYOUT_HEADERS_HELP = [
     LAYOUT_RESIZE_TYPE_HELP,
     LAYOUT_SCALE_HELP,
     LAYOUT_MARGIN_HELP,
-    LAYOUT_NAME_HELP
+    LAYOUT_NAME_HELP,
+    LAYOUT_PARALLELISM_HELP,
+    LAYOUT_LATENCY_HELP
 ]
 LAYOUT_CANVAS_SIZE_WIDTH = 'layout_canvas_size_width'
 LAYOUT_CANVAS_SIZE_WIDTH_HELP = '<width>'
@@ -578,15 +616,15 @@ LAYOUT_CANVAS_BACKGROUND_COLOR = 'layout_canvas_background_color'
 LAYOUT_CANVAS_BACKGROUND_COLOR_HELP = '<empty>|<any-color-name>'
 LAYOUT_CANVAS_NAME = 'layout_canvas_name'
 LAYOUT_CANVAS_NAME_HELP = '<name>'
-LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH = 'layout_canvas_occupancy_map_csv_filepath'
-LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH_HELP = '<csv-filepath-of-occupancy_map>'
+LAYOUT_CANVAS_RESERVATION_MAP_FILEPATH = 'layout_canvas_reservation_map_csv_filepath'
+LAYOUT_CANVAS_RESERVATION_MAP_FILEPATH_HELP = '<csv-filepath-of-reservation_map>'
 LAYOUT_CANVAS_HEADERS = [
     LAYOUT_CANVAS_NAME,
     LAYOUT_CANVAS_MODE,
     LAYOUT_CANVAS_BACKGROUND_COLOR,
     LAYOUT_CANVAS_SIZE_WIDTH,
     LAYOUT_CANVAS_SIZE_HEIGHT,
-    LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH
+    LAYOUT_CANVAS_RESERVATION_MAP_FILEPATH
 ]
 LAYOUT_CANVAS_HEADER_HELP = [
     LAYOUT_CANVAS_NAME_HELP,
@@ -594,7 +632,7 @@ LAYOUT_CANVAS_HEADER_HELP = [
     LAYOUT_CANVAS_BACKGROUND_COLOR_HELP,
     LAYOUT_CANVAS_SIZE_WIDTH_HELP,
     LAYOUT_CANVAS_SIZE_HEIGHT_HELP,
-    LAYOUT_CANVAS_OCCUPANCY_MAP_FILEPATH_HELP
+    LAYOUT_CANVAS_RESERVATION_MAP_FILEPATH_HELP
 ]
 
 LAYOUT_CONTOUR_MASK_IMAGE_FILEPATH = 'layout_contour_mask_image_filepath'
@@ -634,9 +672,10 @@ LAYOUT_ITEM_RESERVATION_SIZE_WIDTH = 'layout_item_reserved_size_width'
 LAYOUT_ITEM_RESERVATION_SIZE_WIDTH_HELP = '<width>'
 LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT = 'layout_item_reserved_size_height'
 LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT_HELP = '<height>'
-
 LAYOUT_ITEM_RESERVATION_NO = 'layout_item_reservation_no'
-LAYOUT_ITEM_RESERVATION_NO_HELP = '<empty>|<reservation_no_in_occupancy_map>'
+LAYOUT_ITEM_RESERVATION_NO_HELP = '<empty>|<reservation_no_in_reservation_map>'
+LAYOUT_ITEM_LATENCY = 'layout_item_latency'
+LAYOUT_ITEM_LATENCY_HELP = '<string>' 
 LAYOUT_ITEM_HEADERS = [
     LAYOUT_ITEM_IMAGE_FILEPATH,
     LAYOUT_ITEM_POSITION_X,
@@ -648,7 +687,8 @@ LAYOUT_ITEM_HEADERS = [
     LAYOUT_ITEM_RESERVATION_POSITION_Y,
     LAYOUT_ITEM_RESERVATION_SIZE_WIDTH,
     LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT,
-    LAYOUT_ITEM_RESERVATION_NO
+    LAYOUT_ITEM_RESERVATION_NO,
+    LAYOUT_ITEM_LATENCY
 ]
 LAYOUT_ITEM_HEADER_HELP = [
     LAYOUT_ITEM_IMAGE_FILEPATH_HELP,
@@ -661,7 +701,8 @@ LAYOUT_ITEM_HEADER_HELP = [
     LAYOUT_ITEM_RESERVATION_POSITION_Y_HELP,
     LAYOUT_ITEM_RESERVATION_SIZE_WIDTH_HELP,
     LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT_HELP,
-    LAYOUT_ITEM_RESERVATION_NO_HELP
+    LAYOUT_ITEM_RESERVATION_NO_HELP,
+    LAYOUT_ITEM_LATENCY_HELP
 ]
 
 LAYOUT_CSV_HEADERS = [

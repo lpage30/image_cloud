@@ -16,7 +16,7 @@ from imagecloud.weighted_image import (
     resize_images_to_proportionally_fit,
     grow_size_by_step,
 )
-from imagecloud.integral_occupancy_map import IntegralOccupancyMap, SampledUnreservedBoxResult
+from imagecloud.reservations import Reservations, SampledUnreservedBoxResult
 import imagecloud.imagecloud_defaults as helper
 from imagecloud.layout import (
     LayoutContour,
@@ -226,8 +226,8 @@ class ImageCloud(object):
             self._check_generated()
             layout = self.layout_
         self.layout_ = layout
-        occupancy = IntegralOccupancyMap()
-        occupancy.occupancy_map = layout.canvas.occupancy_map
+        reservations = Reservations()
+        reservations.reservation_map = layout.canvas.reservation_map
         new_items: list[LayoutItem] = list()
         total_images = len(layout.items)
         self._logger.info('Maximizing ImageCloud empty-space around  {0} images'.format(total_images))
@@ -240,7 +240,7 @@ class ImageCloud(object):
             image_measure = TimeMeasure()
             image_measure.start()
             self._logger.push_indent('image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
-            expanded_versions = occupancy.find_expanded_box_versions(item.reservation_box)
+            expanded_versions = reservations.find_expanded_box_versions(item.reservation_box)
             image_measure.stop()
             if expanded_versions is None:
                 new_items.append(item)
@@ -251,14 +251,15 @@ class ImageCloud(object):
 
             new_reservation_box = expanded_versions[0]
             margin = 2 * (item.reservation_box.left - item.placement_box.left)
-            occupancy.reserve_box(new_reservation_box, item.reservation_no)
+            reservations.reserve_box(new_reservation_box, item.reservation_no)
             new_items.append(
                 LayoutItem(
                     item.original_image,
                     new_reservation_box.remove_margin(margin),
                     item.orientation,
                     new_reservation_box,
-                    item.reservation_no
+                    item.reservation_no,
+                    image_measure.latency_str()
                 )
             )
             maximized_count += 1
@@ -283,7 +284,7 @@ class ImageCloud(object):
                 layout.canvas.size,
                 layout.canvas.mode,
                 layout.canvas.background_color,
-                occupancy.occupancy_map,
+                reservations.reservation_map,
                 layout.canvas.name + '.maximized'
             ),
             LayoutContour(
@@ -298,8 +299,9 @@ class ImageCloud(object):
             layout.resize_type,
             layout.scale,
             layout.margin,
-            layout.name + '.maximized'
-            
+            layout.name + '.maximized',
+            self._parallelism,
+            measure.latency_str()
         )
         self._logger = self._logger.copy()
 
@@ -316,7 +318,7 @@ class ImageCloud(object):
             raise ValueError("We need at least 1 image to plot a imagecloud, "
                              "got %d." % len(proportional_images))
         
-        occupancy = IntegralOccupancyMap(imagecloud_size, self._parallelism)
+        reservations = Reservations(imagecloud_size, self._parallelism)
 
         layout_items: list[LayoutItem] = list()
 
@@ -353,8 +355,10 @@ class ImageCloud(object):
             else:
                 max_image_size = sizes[0]
 
+        generation_measure = TimeMeasure()
         # find best location for each image
         total = len(proportional_images)
+        generation_measure.start()
         for index in range(total):
             weight = proportional_images[index].weight
             image = proportional_images[index].image
@@ -372,7 +376,7 @@ class ImageCloud(object):
 
             self._logger.info('Finding position in ImageCloud')
             
-            sampled_result: SampledUnreservedBoxResult = occupancy.sample_to_find_unreserved_box(
+            sampled_result: SampledUnreservedBoxResult = reservations.sample_to_find_unreserved_box(
                 Size(image.size),
                 self._min_image_size,
                 self._margin,
@@ -390,13 +394,14 @@ class ImageCloud(object):
                     measure.latency_str()
                 ))
                 reservation_no = index + 1
-                occupancy.reserve_box(sampled_result.unreserved_box, reservation_no)
+                reservations.reserve_box(sampled_result.unreserved_box, reservation_no)
                 layout_items.append(LayoutItem(
                     proportional_images[index],
                     sampled_result.actual_box,
                     sampled_result.orientation,
                     sampled_result.unreserved_box,
-                    reservation_no
+                    reservation_no,
+                    measure.latency_str()
                 ))
             else:
                 self._logger.info('Dropping image: samplings({0}). {1} resize({2} -> {3}) ({4})'.format(
@@ -410,12 +415,13 @@ class ImageCloud(object):
                     
             self._logger.pop_indent()
 
+        generation_measure.stop()
         self.layout_ = Layout(
             LayoutCanvas(
                 imagecloud_size,
                 self._mode,
                 self._background_color,
-                occupancy.occupancy_map,
+                reservations.reservation_map,
                 self._name
             ),
             LayoutContour(
@@ -430,7 +436,9 @@ class ImageCloud(object):
             self._resize_type,
             self._scale,
             self._margin,
-            self._name + '.layout'
+            self._name + '.layout',
+            self._parallelism,
+            generation_measure.latency_str()
         )
         return self.layout_
 

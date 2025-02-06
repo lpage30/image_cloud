@@ -17,18 +17,18 @@ cdef struct SampledUnreservedBoxResult:
     Transpose orientation
 
 cdef int is_unreserved_position(
-    unsigned int[:,:] occupancy_map, 
+    unsigned int[:,:] reservation_map, 
     BoxCoordinates box
-)
+) noexcept nogil
 
 cdef BoxCoordinates find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     unsigned int[:] position_scratch_buffer,
     Size size, random_state
 )
 
 cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
-    unsigned int[:,:] occupancy_map,
+    unsigned int[:,:] reservation_map,
     unsigned int[:] position_scratch_buffer,
     Size size,
     Size min_size,
