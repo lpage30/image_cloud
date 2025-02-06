@@ -125,19 +125,6 @@ def py_is_unreserved_position(
 ) -> bool:
     return True if 0 != is_unreserved_position(reservation_map, box) else False
 
-def py_find_unreserved_box(
-    unsigned int[:,:] reservation_map,
-    unsigned int[:] position_scratch_buffer,
-    Size size,
-    random_state
-) -> BoxCoordinates | None:
-    cdef BoxCoordinates result = find_unreserved_box(
-        reservation_map, 
-        position_scratch_buffer, 
-        size,
-        random_state
-    )
-    return None if is_empty_box(result) else result
 
 def py_sample_to_find_unreserved_box(
     unsigned int[:,:] reservation_map,

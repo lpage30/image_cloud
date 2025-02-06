@@ -83,27 +83,6 @@ class Reservations(object):
         self._map_size = Size((map.shape[0], map.shape[1]))
         self._reservation_map = map
 
-    def find_unreserved_box(
-        self,
-        size: Size,
-        random_state
-    ) -> BoxCoordinates | None:
-        if 1 < self._parallelism:
-            result = native_parallel.py_p_find_unreserved_box(
-                self._reservation_map,
-                self._position_scratch_buffer,
-                Size.to_native(size),
-                self._parallelism
-            )
-        else:
-            result = native.py_find_unreserved_box(
-                self._reservation_map,
-                self._position_scratch_buffer,
-                Size.to_native(size),
-                random_state
-            )
-        return BoxCoordinates.from_native(result) if result is not None else result
-
     def sample_to_find_unreserved_box(
         self, 
         size: Size,
