@@ -3,7 +3,7 @@ import argparse
 import sys
 import numpy as np
 import imagecloud_clis.cli_helpers as cli_helpers
-from imagecloud.position_box_size import (ResizeType, RESIZE_TYPES, Size)
+from imagecloud.position_box_size import ( RESIZE_TYPES, Size)
 from imagecloud.imagecloud_defaults import (
     DEFAULT_CLOUD_SIZE,
     DEFAULT_BACKGROUND_COLOR,
@@ -14,7 +14,9 @@ from imagecloud.imagecloud_defaults import (
     DEFAULT_MIN_IMAGE_SIZE,
     DEFAULT_MODE,
     DEFAULT_STEP_SIZE,
-    DEFAULT_RESIZE_TYPE
+    DEFAULT_RESIZE_TYPE,
+    DEFAULT_PARALLELISM
+
 )
 from imagecloud.imagecloud_defaults import (
     MASK_HELP,
@@ -28,7 +30,9 @@ from imagecloud.imagecloud_defaults import (
     CONTOUR_COLOR_HELP,
     BACKGROUND_COLOR_HELP,
     MARGIN_HELP,
-    MODE_HELP
+    MODE_HELP,
+    PARALLELISM_HELP
+    
 )
 from imagecloud.weighted_image import (
     WeightedImage,
@@ -67,6 +71,7 @@ class GenerateCLIArguments(CLIBaseArguments):
         self.mode: str = parsedArgs.mode
         self.cloud_expansion_step_size: int = parsedArgs.cloud_expansion_step_size
         self.maximize_empty_space: bool = parsedArgs.maximize_empty_space
+        self.parallelism: int = parsedArgs.parallelism
     
     @staticmethod
     def parse(arguments: list[str]):
@@ -187,6 +192,13 @@ class GenerateCLIArguments(CLIBaseArguments):
             metavar='<color-name>',
             help='Optional, (default %(default)s) {0}'.format(CONTOUR_COLOR_HELP)
         )
+        parser.add_argument(
+            '-parallelism',
+            default=DEFAULT_PARALLELISM,
+            metavar='<int>',
+            type=lambda v: cli_helpers.is_integer(parser, v),
+            help='Optional, (default $(default)s) {0}'.format(PARALLELISM_HELP)
+        )
 
         args = parser.parse_args(arguments if 0 < len(arguments) else ['-h'])
         return GenerateCLIArguments(args)
@@ -216,7 +228,8 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
         contour_color=args.contour_color,
         margin=args.margin,
         mode=args.mode,
-        name=args.get_output_name()
+        name=args.get_output_name(),
+        parallelism=args.parallelism
     )
     args.logger.info('generating imagecloud from {0} weighted and normalized images.{1}'.format(
         total_images,

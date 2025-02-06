@@ -95,7 +95,8 @@ class ImageCloud(object):
                  contour_color: str | None = None,
                  margin: int | None = None,
                  mode: str | None = None,
-                 name: str | None = None
+                 name: str | None = None,
+                 parallelism: int | None = None
     ) -> None:
         self._mask: np.ndarray | None = np.array(mask) if mask is not None else None
         self._size = size if size is not None else parse_to_size(helper.DEFAULT_CLOUD_SIZE)
@@ -114,6 +115,7 @@ class ImageCloud(object):
         self._mode = mode if mode is not None else helper.DEFAULT_MODE
         self._random_state = None
         self._name = name if name is not None else 'imagecloud'
+        self._parallelism = parallelism if parallelism is not None else parse_to_int(helper.DEFAULT_PARALLELISM)
         self.layout_: Layout | None = None
 
     @property
@@ -314,7 +316,7 @@ class ImageCloud(object):
             raise ValueError("We need at least 1 image to plot a imagecloud, "
                              "got %d." % len(proportional_images))
         
-        occupancy = IntegralOccupancyMap(imagecloud_size)
+        occupancy = IntegralOccupancyMap(imagecloud_size, self._parallelism)
 
         layout_items: list[LayoutItem] = list()
 

@@ -8,6 +8,7 @@ from imagecloud.position_box_size import (
 )
 from PIL import Image
 import imagecloud.native.integral_occupancy_functions as native
+import imagecloud.native.parallel.free_box as native_parallel
 
 
 OccupancyMapDataType = np.uint32
@@ -27,7 +28,8 @@ class SampledFreeBoxResult(object):
         new_size: Size,
         free_box: BoxCoordinates | None = None,
         actual_box: BoxCoordinates | None = None,
-        orientation: Image.Transpose | None = None
+        orientation: Image.Transpose | None = None,
+        parallelism: int | None = None
     ):
         self.found = found
         self.sampling_total = sampling_total
@@ -35,6 +37,7 @@ class SampledFreeBoxResult(object):
         self.free_box = free_box
         self.actual_box = actual_box
         self.orientation = orientation
+        self.parallelism = parallelism if parallelism is not None else 1
     
     @staticmethod
     def from_native(native_sampledfreeboxresult):
@@ -57,11 +60,15 @@ class SampledFreeBoxResult(object):
 
 # extrapolated from https://github.com/amueller/word_cloud/blob/main/wordcloud/wordcloud.py
 class IntegralOccupancyMap(object):
-    def __init__(self, map_size: Size = Size((0,0))):
+    def __init__(self,
+                 map_size: Size = Size((0,0)),
+                 parallelism: int = 1
+        ):
         self._map_size = map_size
         # integral is our 'target' for placement of images
         self._occupancy_map: OccupancyMapType  = np.zeros(map_size.tuple, dtype=OccupancyMapDataType)
-        self._position_scratch_buffer: OccupancyMapType = np.zeros(map_size.width * map_size.height, dtype=OccupancyMapDataType)
+        self._position_scratch_buffer: OccupancyMapType = np.zeros(map_size.width * map_size.height, dtype=OccupancyMapDataType),
+        self._parallelism: int = parallelism
     
     @property
     def map_size(self) -> Size:
@@ -81,12 +88,20 @@ class IntegralOccupancyMap(object):
         size: Size,
         random_state
     ) -> BoxCoordinates | None:
-        result = native.py_find_free_box(
-            self._occupancy_map,
-            self._position_scratch_buffer,
-            Size.to_native(size),
-            random_state
-        )
+        if 1 < self._parallelism:
+            result = native_parallel.py_p_find_free_box(
+                self._occupancy_map,
+                self._position_scratch_buffer,
+                Size.to_native(size),
+                self._parallelism
+            )
+        else:
+            result = native.py_find_free_box(
+                self._occupancy_map,
+                self._position_scratch_buffer,
+                Size.to_native(size),
+                random_state
+            )
         return BoxCoordinates.from_native(result) if result is not None else result
 
     def sample_to_find_free_box(
@@ -98,9 +113,19 @@ class IntegralOccupancyMap(object):
         step_size: int,
         random_state
     ) -> SampledFreeBoxResult:
-     
-        return SampledFreeBoxResult.from_native(
-            native.py_sample_to_find_free_box(
+
+        if 1 < self._parallelism:
+            result = native_parallel.py_p_sample_to_find_free_box(
+                self._occupancy_map,
+                Size.to_native(size),
+                Size.to_native(min_size),
+                margin,
+                resize_type.value,
+                step_size,
+                self._parallelism
+            )
+        else:
+            result = native.py_sample_to_find_free_box(
                 self._occupancy_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
@@ -110,7 +135,7 @@ class IntegralOccupancyMap(object):
                 step_size,
                 random_state,
             )
-        )
+        return SampledFreeBoxResult.from_native(result)
     
     def reserve_box(self, box: BoxCoordinates, reservation_no: int) -> None:
         if reservation_no == 0:
@@ -214,4 +239,16 @@ class IntegralOccupancyMap(object):
         return result
 
     def _is_free_position(self, box: BoxCoordinates) -> bool:
-        return native.py_is_free_position(self.occupancy_map, BoxCoordinates.to_native(box))
+        if 1 < self._parallelism:
+            result = native_parallel.py_p_is_free_position(
+                self.occupancy_map,
+                BoxCoordinates.to_native(box),
+                self._parallelism
+            )
+        else:
+            result = native.py_is_free_position(
+                self.occupancy_map,
+                BoxCoordinates.to_native(box)
+            )
+        return result
+

@@ -19,13 +19,16 @@ Once installed you will be able to execute scripts defined in the `myproject.tom
 ### generate_imagecloud
 ```
 usage: generate_imagecloud [-h] -i <csv_filepath> [-output_directory <output-directory-path>]
-                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm] [-show_imagecloud]
-                           [-no-show_imagecloud] [-show_imagecloud_reservation_chart] [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose]
-                           [-log_filepath <log-filepath>] [-cloud_size "<width>,<height>"] [-cloud_expansion_step_size <int>] [-maximize_empty_space]
+                           [-output_image_format blp|bmp|dds|dib|eps|gif|icns|ico|im|jpeg|mpo|msp|pcx|pfm|png|ppm|sgi|webp|xbm]
+                           [-show_imagecloud] [-no-show_imagecloud] [-show_imagecloud_reservation_chart]
+                           [-no-show_imagecloud_reservation_chart] [-verbose] [-no-verbose] [-log_filepath <log-filepath>]
+                           [-cloud_size "<width>,<height>"] [-cloud_expansion_step_size <int>] [-maximize_empty_space]
                            [-no-maximize_empty_space] [-margin <number>] [-min_image_size "<width>,<height>"] [-step_size <int>]
-                           [-resize_type NO_RESIZE_TYPE|MAINTAIN_ASPECT_RATIO|MAINTAIN_PERCENTAGE_CHANGE] [-max_image_size "<width>,<height>"]
-                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N] [-background_color <color-name>]
-                           [-mask <image_file_path>] [-contour_width <float>] [-contour_color <color-name>]
+                           [-resize_type NO_RESIZE_TYPE|MAINTAIN_ASPECT_RATIO|MAINTAIN_PERCENTAGE_CHANGE]
+                           [-max_image_size "<width>,<height>"]
+                           [-mode 1|L|P|RGB|RGBA|CMYK|YCbCr|LAB|HSV|I|F|LA|PA|RGBX|RGBa|La|I;16|I;16L|I;16B|I;16N]
+                           [-background_color <color-name>] [-mask <image_file_path>] [-contour_width <float>]
+                           [-contour_color <color-name>] [-parallelism <int>]
 
             Generate an 'ImageCloud' from a csv file indicating image filepath and weight for image.
             
@@ -91,6 +94,7 @@ options:
                         Optional, (default 0) If mask is not None and contour_width > 0, draw the mask contour.
   -contour_color <color-name>
                         Optional, (default black) Mask contour color.
+  -parallelism <int>    Optional, (default $(default)s) Experimental, using parallel algorithms to accomplish image-cloud generation.  Value is the number of threads-of-execution to commit to generation.  A value of 1 will execute sequentially (not experimental); uses no parallel algorithms.
 ```
 #### CSV to import
 csv file for weighted images with following format:
