@@ -29,12 +29,6 @@ cdef int is_free_position(
                 return 0
     return 1
 
-def py_is_free_position(
-    unsigned int[:,:] occupancy_map,
-    BoxCoordinates box
-) -> bool:
-    return True if 0 != is_free_position(occupancy_map, box) else False
-
 cdef BoxCoordinates find_free_box(
     unsigned int[:,:] occupancy_map,
     unsigned int[:] position_scratch_buffer,
@@ -70,21 +64,6 @@ cdef BoxCoordinates find_free_box(
         ),
         size
     )
-
-
-def py_find_free_box(
-    unsigned int[:,:] occupancy_map,
-    unsigned int[:] position_scratch_buffer,
-    Size size,
-    random_state
-) -> BoxCoordinates | None:
-    cdef BoxCoordinates result = find_free_box(
-        occupancy_map, 
-        position_scratch_buffer, 
-        size,
-        random_state
-    )
-    return None if is_empty_box(result) else result
 
 cdef SampledFreeBoxResult sample_to_find_free_box(
     unsigned int[:,:] occupancy_map, 
@@ -138,6 +117,27 @@ cdef SampledFreeBoxResult sample_to_find_free_box(
             rotate = 0
         else:
             rotate = 1
+
+
+def py_is_free_position(
+    unsigned int[:,:] occupancy_map,
+    BoxCoordinates box
+) -> bool:
+    return True if 0 != is_free_position(occupancy_map, box) else False
+
+def py_find_free_box(
+    unsigned int[:,:] occupancy_map,
+    unsigned int[:] position_scratch_buffer,
+    Size size,
+    random_state
+) -> BoxCoordinates | None:
+    cdef BoxCoordinates result = find_free_box(
+        occupancy_map, 
+        position_scratch_buffer, 
+        size,
+        random_state
+    )
+    return None if is_empty_box(result) else result
 
 def py_sample_to_find_free_box(
     unsigned int[:,:] occupancy_map,

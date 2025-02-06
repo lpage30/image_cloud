@@ -62,7 +62,6 @@ class Position(Point):
     def from_native_box(native_box):
         return Position((native_box['left'], native_box['upper']))
 
-
 class Size:
     width: int
     height: int
