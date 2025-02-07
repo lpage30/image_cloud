@@ -101,7 +101,7 @@ class Reservations(object):
                 margin,
                 resize_type.value,
                 step_size,
-                self._parallelism
+                0
             )
         else:
             result = native.py_sample_to_find_unreserved_box(
@@ -222,7 +222,7 @@ class Reservations(object):
             result = native_parallel.py_p_is_unreserved_position(
                 self.reservation_map,
                 BoxCoordinates.to_native(box),
-                self._parallelism
+                0
             )
         else:
             result = native.py_is_unreserved_position(
