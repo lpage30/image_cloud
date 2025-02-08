@@ -4,7 +4,17 @@
 # distutils: language = c++
 # distutils: extra_compile_args = -std=c++11
 from libcpp.atomic cimport atomic
+cdef extern from "unistd.h":
+    int dup(int oldfd)
+    int dup2(int oldfd, int newfd)
+    int close(int fd)
 cdef extern from "stdio.h":
+    ctypedef struct FILE:
+        pass
+    FILE *stdout
+    int fflush(FILE *stream)
+    FILE* fdopen(int fd, const char *mode)
+    int fclose(FILE *stream)
     int printf(const char *format, ...) noexcept nogil
 
 cdef atomic[int] g_level
@@ -54,3 +64,15 @@ cdef py_set_logger_level(int level):
     else:
         elevel = LoggerLevel.NOT_SET
     set_logger_level(elevel)
+
+cdef int py_set_new_sys_stdout(int new_stdout_fd):
+    cdef int original_fd = dup(1)
+    # cdef FILE* newstdOut = fdopen(new_stdout_fd, "w+")
+    fflush(stdout)
+    dup2(new_stdout_fd, 1)
+    return original_fd
+
+cdef py_set_original_sys_stdout(int original_stdout_fd):
+    fflush(stdout)
+    close(dup2(original_stdout_fd, 1))
+
