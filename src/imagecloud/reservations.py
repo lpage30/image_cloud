@@ -7,9 +7,14 @@ from imagecloud.position_box_size import (
     BoxCoordinates
 )
 from PIL import Image
-import imagecloud.native.unreserved_box as native
-import imagecloud.native.parallel.p_unreserved_box as native_parallel
-
+from imagecloud.native.unreserved_box import (
+    native_sample_to_find_unreserved_box,
+    native_is_unreserved_position
+)
+from imagecloud.native.parallel.p_unreserved_box import (
+    native_p_sample_to_find_unreserved_box,
+    native_p_is_unreserved_position
+)
 
 ReservationMapDataType = np.uint32
 ReservationMapType = np.ndarray[ReservationMapDataType, ReservationMapDataType]
@@ -94,7 +99,7 @@ class Reservations(object):
     ) -> SampledUnreservedBoxResult:
 
         if 1 < self._parallelism:
-            result = native_parallel.py_p_sample_to_find_unreserved_box(
+            result = native_p_sample_to_find_unreserved_box(
                 self._reservation_map,
                 Size.to_native(size),
                 Size.to_native(min_size),
@@ -104,7 +109,7 @@ class Reservations(object):
                 0
             )
         else:
-            result = native.py_sample_to_find_unreserved_box(
+            result = native_sample_to_find_unreserved_box(
                 self._reservation_map,
                 self._position_scratch_buffer,
                 Size.to_native(size),
@@ -219,13 +224,13 @@ class Reservations(object):
 
     def _is_unreserved_position(self, box: BoxCoordinates) -> bool:
         if 1 < self._parallelism:
-            result = native_parallel.py_p_is_unreserved_position(
+            result = native_p_is_unreserved_position(
                 self.reservation_map,
                 BoxCoordinates.to_native(box),
                 0
             )
         else:
-            result = native.py_is_unreserved_position(
+            result = native_is_unreserved_position(
                 self.reservation_map,
                 BoxCoordinates.to_native(box)
             )

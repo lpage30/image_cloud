@@ -35,6 +35,7 @@ from imagecloud.native.position_box_size cimport (
     untranspose_size
 )
 from imagecloud.native.logging cimport (
+    
     log_error,
     log_info,
     log_debug
@@ -96,7 +97,7 @@ cdef int p_is_unreserved_position(
                 reservation_map,
                 partitions[i]
             )
-            log_debug()('is_unreserved. partition[%d] (%d,%d,%d,%d) result %d\n', i, partitions[i].left, partitions[i].upper, partitions[i].right, partitions[i].lower, result)
+            log_debug()("is_unreserved. partition[%d] (%d,%d,%d,%d) result %d\n", i, partitions[i].left, partitions[i].upper, partitions[i].right, partitions[i].lower, result)
             if 0 == result:
                 break
     return result
@@ -126,9 +127,9 @@ cdef BoxCoordinates p_find_unreserved_box(
         for p in prange(total_points):
             pos = to_two_dimension_array_position(p, scan_size.width)
             if pos.left < 0 or pos.upper < 0:
-                log_error()('find_unreserved_box pointNo[%d] pos(%d,%d) width %d\n', p, pos.left, pos.upper, scan_size.width)
+                log_error()("find_unreserved_box pointNo[%d] pos(%d,%d) width %d\n", p, pos.left, pos.upper, scan_size.width)
             else:
-                log_debug()('find_unreserved_box pointNo[%d] pos(%d,%d) width %d\n', p, pos.left, pos.upper, scan_size.width)
+                log_debug()("find_unreserved_box pointNo[%d] pos(%d,%d) width %d\n", p, pos.left, pos.upper, scan_size.width)
 
 
             if 1 == p_is_unreserved_position(
@@ -187,7 +188,7 @@ cdef PSampledUnreservedBoxResult p_sample_to_find_unreserved_box(
                 orientation = Transpose.ROTATE_90
                 new_size = transpose_size(orientation, new_size)
 
-            log_debug()('sample_find_unreserved_box iteration[%d] size(%d,%d) orientation(%d)\n', i, new_size.width, new_size.height, orientation)
+            log_debug()("sample_find_unreserved_box iteration[%d] size(%d,%d) orientation(%d)\n", i, new_size.width, new_size.height, orientation)
                 
             unreserved_box = p_find_unreserved_box(
                 reservation_map,
@@ -203,7 +204,7 @@ cdef PSampledUnreservedBoxResult p_sample_to_find_unreserved_box(
                 result.unreserved_box = unreserved_box
                 result.actual_box = remove_margin(margin, unreserved_box)
                 result.orientation = orientation
-                log_debug()('sample_find_unreserved_box iteration[%d] reserved_box(%d,%d,%d,%d) actual_box(%d,%d,%d,%d)\n',
+                log_debug()("sample_find_unreserved_box iteration[%d] reserved_box(%d,%d,%d,%d) actual_box(%d,%d,%d,%d)\n",
                     i, result.unreserved_box.left, result.unreserved_box.upper, result.unreserved_box.right, result.unreserved_box.lower,
                     result.actual_box.left, result.actual_box.upper, result.actual_box.right, result.actual_box.lower
                 )
@@ -217,7 +218,7 @@ cdef PSampledUnreservedBoxResult p_sample_to_find_unreserved_box(
     return result
 
 
-def py_p_is_unreserved_position(
+def native_p_is_unreserved_position(
     unsigned int[:,:] reservation_map, 
     BoxCoordinates box,
     int parallelism,
@@ -226,7 +227,7 @@ def py_p_is_unreserved_position(
     cdef BoxCoordinates[::1] box_scratch_buffer = create_box_array(parallelism_to_partition_type(parallelism))
     return True if 0 != p_is_unreserved_position(reservation_map, box, parallelism, box_scratch_buffer) else False
 
-def py_p_sample_to_find_unreserved_box(
+def native_p_sample_to_find_unreserved_box(
     unsigned int[:,:] reservation_map,
     Size size,
     Size min_size,

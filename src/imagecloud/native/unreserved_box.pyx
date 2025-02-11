@@ -119,14 +119,14 @@ cdef SampledUnreservedBoxResult sample_to_find_unreserved_box(
             rotate = 1
 
 
-def py_is_unreserved_position(
+def native_is_unreserved_position(
     unsigned int[:,:] reservation_map,
     BoxCoordinates box
 ) -> bool:
     return True if 0 != is_unreserved_position(reservation_map, box) else False
 
 
-def py_sample_to_find_unreserved_box(
+def native_sample_to_find_unreserved_box(
     unsigned int[:,:] reservation_map,
     unsigned int[:] position_scratch_buffer,
     Size size,

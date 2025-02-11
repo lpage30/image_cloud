@@ -1,114 +1,13 @@
 import logging
-from enum import Enum
 import datetime
-import os
-from sys import (__stdout__, stdout)
-from io import (FileIO, TextIOWrapper)
-from typing import TextIO
-import imagecloud.native.logging as native
-class LoggerLevel(Enum):
-    ERROR = logging.ERROR
-    WARNING = logging.WARNING
-    INFO = logging.INFO
-    DEBUG = logging.DEBUG
-    NOT_SET = logging.NOTSET
-    
-def extract_logger_level(message: str, default: LoggerLevel) -> LoggerLevel:
-    for level in LoggerLevel:
-        if level.name in message:
-            return level
-    return default
-    
+from sys import stdout
+from imagecloud.logger_level import LoggerLevel
+from imagecloud.native.logging import (
+    native_set_logger_level,
+    native_set_log_callback,
+    native_restore_log_callback
+)
 
-class ConditionalStreamHandler(logging.StreamHandler):
-    
-    def __init__(self, stream, write_prefix_token):
-        super().__init__(stream)
-        self.write_prefix_token = write_prefix_token
-
-    def emit(self, record):
-        """
-        Emit a record.
-
-        If a formatter is specified, it is used to format the record.
-        The record is then written to the stream with a trailing newline.  If
-        exception information is present, it is formatted using
-        traceback.print_exception and appended to the stream.  If the stream
-        has an 'encoding' attribute, it is used to determine how to do the
-        output to the stream.
-        """
-        try:
-            msg = self.format(record)
-            stream = self.stream
-            # issue 35046: merged two stream.writes into one.
-            # prefix messages with prefix token so StdOutErrRedirector ignores them
-            stream.write(self.write_prefix_token + msg + self.terminator)
-            self.flush()
-        except RecursionError:  # See issue 36272
-            raise
-        except Exception:
-            self.handleError(record)
-
-class StdoutInterceptor:
-    def __init__(self, logger, level: LoggerLevel, ignore_prefix_token):
-        
-        self.original_stdout_fd: int = -1
-        self.pipe_read_fd: int = -1
-        self.pipe_write_fd: int = -1
-        self.opened = False
-        
-        self.logger = logger
-        self.log_level = level
-        self.ignore_prefix_token = ignore_prefix_token
-        self.interceptor_input: TextIO | None = None
-        self.open()
-        
-    def __del__(self):
-        self.close()
-    
-    @property
-    def input(self) -> TextIO:
-        if self.interceptor_input is None:
-            raise ValueError('StdoutInterceptor is closed')
-        return self.interceptor_input
-
-    def open(self):
-        if self.opened:
-            return
-        self.opened = True
-        self.pipe_read_fd, self.pipe_write_fd = os.pipe()
-        self.original_stdout_fd = native.py_set_new_sys_stdout(self.pipe_write_fd)
-        self.interceptor_input = TextIOWrapper(FileIO(self.pipe_read_fd, mode='r+'))
-        
-    def close(self):
-        if not(self.opened):
-            return
-        self.opened = False
-        native.py_set_original_sys_stdout(self.original_stdout_fd)
-        self.interceptor_input.close()
-        os.close(self.pipe_read_fd)
-
-        self.interceptor_input = None
-        self.original_stdout_fd = -1
-        self.pipe_read_fd= -1
-        self.pipe_write_fd = -1
-
-
-    def write(self, message):
-        # Filter out empty messages
-        if message.strip():
-            # messages starting with prefix_token were written by logger; ignore them to prevent circular write
-            if message.startswith(self.ignore_prefix_token):
-                # message is 'captured' from stream handler, let it though
-                print(message[len(self.ignore_prefix_token):], file=__stdout__)
-            else: 
-                # message is not 'captured' from stream handler, write it to logger
-                self.logger.log(extract_logger_level(message, self.log_level).value, message)
-                
-    def flush(self):
-        if self.opened:
-            os.fsync(self.pip_write_fd)
- 
 class  BaseLogger:
     def __init__(self, name: str, level: LoggerLevel) -> None:
         self._name = name
@@ -118,13 +17,13 @@ class  BaseLogger:
         self._buffer_logging: bool = False
         self._logger = logging.getLogger(name)
         self._logger.setLevel(level.value)
-        native.py_set_logger_level(level.value)
-        self._logger_stdout_prefix_token = '$$'
-        self._pipe = os.pipe()
-        self._logger.addHandler(ConditionalStreamHandler(stdout, self._logger_stdout_prefix_token))
-        self._stdout_intercept = StdoutInterceptor(self._logger, level, self._logger_stdout_prefix_token)
-        self._logger.addHander(logging.StreamHandler(self._stdout_intercept.input))
-
+        native_set_logger_level(level.value)
+        native_set_log_callback(self._native_logger_callback)
+        self._logger.addHandler(logging.StreamHandler(stdout))
+        
+    def __del__(self):
+        native_restore_log_callback()
+                            
     def get_prefix_message(self, level: LoggerLevel) -> str:
         now = datetime.datetime.now()
         return '{0}-{1} {2}'.format(
@@ -132,9 +31,11 @@ class  BaseLogger:
             '%02d' % (now.microsecond / 10000),
             level.name
         )
-    
-    def copy(self):
-        return BaseLogger(self._name, self._level)
+    def reset_context(self) -> None:
+        self._indent_stack: list[str] = list()
+        self._logging_buffer: list[tuple[LoggerLevel,str]] = list()
+        self._buffer_logging: bool = False
+
         
     @property
     def buffering(self) -> bool:
@@ -181,42 +82,24 @@ class  BaseLogger:
             if self.buffering and level in [LoggerLevel.INFO, LoggerLevel.DEBUG]:
                 self._logging_buffer.append((level, msg))
             else:
-                match level:
-                    case LoggerLevel.INFO:
-                        print('{0} - {1}{2}> {3}'.format(
-                                LoggerLevel.INFO.name,
-                                self.indent,
-                                self.get_prefix_message(LoggerLevel.INFO),
-                                msg
-                            )
-                        )        
-                    case LoggerLevel.WARNING:
-                        print('{0} - {1}{2}> {3}'.format(
-                                LoggerLevel.WARNING.name,
-                                self.indent,
-                                self.get_prefix_message(LoggerLevel.WARNING),
-                                msg
-                            )
-                        )
-                    case LoggerLevel.ERROR:
-                        print('{0} - {1}{2}> {3}'.format(
-                                LoggerLevel.ERROR.name,
-                                self.indent,
-                                self.get_prefix_message(LoggerLevel.ERROR),
-                                msg
-                            )
-                        )
-                    case _:
-                        print('{0} - {1}{2}> {3}'.format(
-                                LoggerLevel.DEBUG.name,
-                                self.indent,
-                                self.get_prefix_message(LoggerLevel.DEBUG),
-                                msg
-                            )
-                        )
+                self._logger.log(level.value, '{0} - {1}{2}> {3}'.format(
+                        level.name,
+                        self.indent,
+                        self.get_prefix_message(LoggerLevel.INFO),
+                        msg
+                    )
+                )        
                 return True
         return False
     
+    def _native_logger_callback(self, message: str):
+        log_level: LoggerLevel = LoggerLevel.DEBUG
+        for level in LoggerLevel:
+            if level.name in message:
+                log_level = level
+                break
+        self._log(log_level, message)
+        
     @staticmethod
     def create(name: str, verbose: bool):
         return BaseLogger(name, LoggerLevel.DEBUG if verbose else LoggerLevel.INFO)

@@ -110,6 +110,7 @@ class ImageCloud(object):
         self._contour_width = contour_width if contour_width is not None else parse_to_int(helper.DEFAULT_CONTOUR_WIDTH)
         self._contour_color = contour_color if contour_color is not None else helper.DEFAULT_CONTOUR_COLOR
         self._logger = logger
+        self._logger.reset_context()
 
         self._margin = margin if margin is not None else parse_to_int(helper.DEFAULT_MARGIN)
         self._mode = mode if mode is not None else helper.DEFAULT_MODE
@@ -216,7 +217,7 @@ class ImageCloud(object):
             len(proportional_images),
             measure.latency_str()
         ))
-        self._logger = self._logger.copy()
+        self._logger.reset_context()
 
         return result
     
@@ -303,7 +304,7 @@ class ImageCloud(object):
             self._parallelism,
             measure.latency_str()
         )
-        self._logger = self._logger.copy()
+        self._logger.reset_context()
 
         return self.layout_
 

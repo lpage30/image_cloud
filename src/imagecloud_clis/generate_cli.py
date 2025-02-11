@@ -208,7 +208,8 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
     sys_args = sys.argv[1:]
     if args == None:
         args = GenerateCLIArguments.parse(sys_args)
-    
+
+    print('{0} {1}'.format(GenerateCLIArguments.name, ' '.join(sys_args)))
     args.logger.info('{0} {1}'.format(GenerateCLIArguments.name, ' '.join(sys_args)))
     args.logger.info('loading {0} ...'.format(args.input))
     weighted_images: list[WeightedImage] = load_weighted_images(args.input)

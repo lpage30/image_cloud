@@ -66,6 +66,7 @@ def layout(args: LayoutCLIrguments | None = None) -> None:
     sys_args = sys.argv[1:]    
     if args == None:
         args = LayoutCLIrguments.parse(sys_args)
+
     
     args.logger.info('{0} {1}'.format(LayoutCLIrguments.name, ' '.join(sys_args)))
     args.logger.info('loading {0} ...'.format(args.input))
@@ -80,10 +81,10 @@ def layout(args: LayoutCLIrguments | None = None) -> None:
 
     if args.maximize_empty_space:
         args.logger.info('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
-        cloud = ImageCloud.create(layout, args.logger.copy())
+        cloud = ImageCloud.create(layout, args.logger)
         layout = cloud.maximize_empty_space(layout)
-
-    collage = layout.to_image(args.logger.copy(), args.scale)
+        
+    collage = layout.to_image(args.logger, args.scale)
     reservation_chart = layout.to_reservation_chart_image()
     args.try_save_output(collage, reservation_chart, layout)
         

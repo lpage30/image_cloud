@@ -13,7 +13,7 @@ cdef Position to_position(
     r.upper = upper
     return r
 
-def py_to_position(
+def native_to_position(
     int left,
     int upper
 ) -> Position:
@@ -35,7 +35,7 @@ cdef Size to_size(
     r.height = height
     return r
 
-def py_to_size(
+def native_to_size(
     int width,
     int height
 ) -> Size:
@@ -122,7 +122,7 @@ cdef BoxCoordinates to_box(
     r.lower = position.upper + size.height
     return r
 
-def py_to_box(
+def native_to_box(
     Position position,
     Size size
 ) -> BoxCoordinates:
@@ -212,7 +212,7 @@ cdef SampledResize sample_resize_to_area(
     result.new_size = last_size_distance.size
     return result
 
-def py_sample_resize_to_area(
+def native_sample_resize_to_area(
     Size size,
     int area,
     int step_size,
@@ -221,24 +221,24 @@ def py_sample_resize_to_area(
     return sample_resize_to_area(size, area, step_size, resize_type)
 
 cdef Position[::1] create_position_array(int size):
-    cdef Position[::1] result = cython.view.array(shape=(size,), itemsize=sizeof(Position), format='i i')
+    cdef Position[::1] result = cython.view.array(shape=(size,), itemsize=sizeof(Position), format="i i")
     return result
 
-def py_create_position_array(int size) -> Position[::1]:
+def native_create_position_array(int size) -> Position[::1]:
     return create_position_array(size)
 
 cdef Size[::1] create_size_array(int size):
-    cdef Size[::1] result = cython.view.array(shape=(size,), itemsize=sizeof(Size), format='i i')
+    cdef Size[::1] result = cython.view.array(shape=(size,), itemsize=sizeof(Size), format="i i")
     return result
 
-def py_create_size_array(int size) -> Size[::1]:
+def native_create_size_array(int size) -> Size[::1]:
     return create_size_array(size)
 
 cdef BoxCoordinates[::1] create_box_array(int size):
-    cdef BoxCoordinates[::1] result = cython.view.array(shape=(size,), itemsize=sizeof(BoxCoordinates), format='i i i i')
+    cdef BoxCoordinates[::1] result = cython.view.array(shape=(size,), itemsize=sizeof(BoxCoordinates), format="i i i i")
     return result
 
-def py_create_box_array(int size) -> BoxCoordinates[::1]:
+def native_create_box_array(int size) -> BoxCoordinates[::1]:
     return create_box_array(size)
 
 

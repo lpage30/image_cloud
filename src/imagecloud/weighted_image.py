@@ -4,7 +4,7 @@ import csv
 from PIL import Image
 from imagecloud.imagecloud_helpers import TimeMeasure
 from imagecloud.position_box_size import (ResizeType, Size)
-from imagecloud.native.position_box_size import py_sample_resize_to_area
+from imagecloud.native.position_box_size import native_sample_resize_to_area
 
 class NamedImage(object):
     
@@ -129,7 +129,7 @@ def resize_images_to_proportionally_fit(
         logger.push_indent('image-{0}[{1}/{2}]'.format(weighted_image.name, index+1, total, ))
         measure1 = TimeMeasure()
         measure1.start()
-        native_sampled_resize = py_sample_resize_to_area(
+        native_sampled_resize = native_sample_resize_to_area(
             Size.to_native(image_size),
             resize_area,
             step_size,

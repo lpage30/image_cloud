@@ -435,6 +435,7 @@ class Layout:
         logger: BaseLogger,
         scale: float = 1.0
     ) -> NamedImage:
+        logger.reset_context()
         canvas = self.canvas.to_image(scale)
 
         total = len(self.items)

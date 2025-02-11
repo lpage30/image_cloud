@@ -1,6 +1,10 @@
 from PIL import Image
 from enum import Enum
-import imagecloud.native.position_box_size as native
+from imagecloud.native.position_box_size import (
+    native_to_position,
+    native_to_size,
+    native_to_box
+)
 
 class ResizeType(Enum):
     NO_RESIZE_TYPE = -1
@@ -52,7 +56,7 @@ class Position(Point):
 
     @staticmethod
     def to_native(pos):
-        return native.py_to_position(pos.left, pos.upper)
+        return native_to_position(pos.left, pos.upper)
 
     @staticmethod
     def from_native(native_pos):
@@ -160,7 +164,7 @@ class Size:
     
     @staticmethod
     def to_native(size):
-        return native.py_to_size(size.width, size.height)
+        return native_to_size(size.width, size.height)
 
     @staticmethod
     def from_native(native_size):
@@ -240,7 +244,7 @@ class BoxCoordinates:
 
     @staticmethod
     def to_native(box):
-        return native.py_to_box(Position.to_native(box.position), Size.to_native(box.size))
+        return native_to_box(Position.to_native(box.position), Size.to_native(box.size))
     
     @staticmethod
     def from_native(native_box):
