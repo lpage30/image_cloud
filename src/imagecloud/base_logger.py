@@ -1,11 +1,10 @@
 import logging
 import datetime
 from sys import stdout
+import traceback
 from imagecloud.logger_level import LoggerLevel
-from imagecloud.native.logging import (
-    native_set_logger_level,
-    native_set_log_callback,
-    native_restore_log_callback
+from imagecloud.native.base_logger import (
+    native_set_base_logger
 )
 
 class  BaseLogger:
@@ -17,13 +16,9 @@ class  BaseLogger:
         self._buffer_logging: bool = False
         self._logger = logging.getLogger(name)
         self._logger.setLevel(level.value)
-        native_set_logger_level(level.value)
-        native_set_log_callback(self._native_logger_callback)
+        native_set_base_logger(level.value, self._native_logger_callback)
         self._logger.addHandler(logging.StreamHandler(stdout))
-        
-    def __del__(self):
-        native_restore_log_callback()
-                            
+                                    
     def get_prefix_message(self, level: LoggerLevel) -> str:
         now = datetime.datetime.now()
         return '{0}-{1} {2}'.format(
@@ -77,28 +72,25 @@ class  BaseLogger:
                 self._log(level, message)
         self._logging_buffer = list()
 
-    def _log(self, level: LoggerLevel, msg: str) -> bool:
+    def _log(self, level: LoggerLevel, msg: str, native: bool = False) -> bool:
         if self._level != LoggerLevel.NOT_SET and self._level.value <= level.value:
             if self.buffering and level in [LoggerLevel.INFO, LoggerLevel.DEBUG]:
                 self._logging_buffer.append((level, msg))
             else:
-                self._logger.log(level.value, '{0} - {1}{2}> {3}'.format(
-                        level.name,
+                self._logger.log(level.value, '{0}{1}{2}> {3}'.format(
                         self.indent,
-                        self.get_prefix_message(LoggerLevel.INFO),
+                        self.get_prefix_message(level),
+                        '(native)' if native else '',
                         msg
                     )
                 )        
                 return True
         return False
     
-    def _native_logger_callback(self, message: str):
-        log_level: LoggerLevel = LoggerLevel.DEBUG
-        for level in LoggerLevel:
-            if level.name in message:
-                log_level = level
-                break
-        self._log(log_level, message)
+    def _native_logger_callback(self, native_level: int, native_message: str):
+        level = LoggerLevel(native_level)
+        
+        self._log(level, native_message, True)
         
     @staticmethod
     def create(name: str, verbose: bool):

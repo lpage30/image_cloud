@@ -2,9 +2,9 @@ import argparse
 from imagecloud.base_logger import BaseLogger
 from imagecloud.file_logger import FileLogger
 import imagecloud_clis.cli_helpers as cli_helpers
-from imagecloud.imagecloud_helpers import to_unused_filepath
+from imagecloud.parsers import to_unused_filepath
 from imagecloud.imagecloud_defaults import DEFAULT_IMAGE_FORMAT, IMAGE_FORMATS, IMAGE_FORMAT_HELP
-from imagecloud.weighted_image import NamedImage
+from imagecloud.image_wrappers import NamedImage
 from imagecloud.layout import Layout
 
 

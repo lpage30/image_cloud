@@ -3,7 +3,7 @@ import argparse
 import sys
 import numpy as np
 import imagecloud_clis.cli_helpers as cli_helpers
-from imagecloud.position_box_size import ( RESIZE_TYPES, Size)
+from imagecloud.size import ( RESIZE_TYPES, Size)
 from imagecloud.imagecloud_defaults import (
     DEFAULT_CLOUD_SIZE,
     DEFAULT_BACKGROUND_COLOR,
@@ -15,7 +15,7 @@ from imagecloud.imagecloud_defaults import (
     DEFAULT_MODE,
     DEFAULT_STEP_SIZE,
     DEFAULT_RESIZE_TYPE,
-    DEFAULT_PARALLELISM
+    DEFAULT_TOTAL_THREADS
 
 )
 from imagecloud.imagecloud_defaults import (
@@ -31,10 +31,10 @@ from imagecloud.imagecloud_defaults import (
     BACKGROUND_COLOR_HELP,
     MARGIN_HELP,
     MODE_HELP,
-    PARALLELISM_HELP
+    TOTAL_THREADS_HELP
     
 )
-from imagecloud.weighted_image import (
+from imagecloud.image_wrappers import (
     WeightedImage,
     WEIGHTED_IMAGES_CSV_FILE_HELP,
     load_weighted_images,
@@ -71,7 +71,7 @@ class GenerateCLIArguments(CLIBaseArguments):
         self.mode: str = parsedArgs.mode
         self.cloud_expansion_step_size: int = parsedArgs.cloud_expansion_step_size
         self.maximize_empty_space: bool = parsedArgs.maximize_empty_space
-        self.parallelism: int = parsedArgs.parallelism
+        self.total_threads: int = parsedArgs.total_threads
     
     @staticmethod
     def parse(arguments: list[str]):
@@ -193,11 +193,11 @@ class GenerateCLIArguments(CLIBaseArguments):
             help='Optional, (default %(default)s) {0}'.format(CONTOUR_COLOR_HELP)
         )
         parser.add_argument(
-            '-parallelism',
-            default=DEFAULT_PARALLELISM,
+            '-total_threads',
+            default=DEFAULT_TOTAL_THREADS,
             metavar='<int>',
             type=lambda v: cli_helpers.is_integer(parser, v),
-            help='Optional, (default $(default)s) {0}'.format(PARALLELISM_HELP)
+            help='Optional, (default $(default)s) {0}'.format(TOTAL_THREADS_HELP)
         )
 
         args = parser.parse_args(arguments if 0 < len(arguments) else ['-h'])
@@ -230,7 +230,7 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
         margin=args.margin,
         mode=args.mode,
         name=args.get_output_name(),
-        parallelism=args.parallelism
+        total_threads=args.total_threads
     )
     args.logger.info('generating imagecloud from {0} weighted and normalized images.{1}'.format(
         total_images,
@@ -242,7 +242,7 @@ def generate(args: GenerateCLIArguments | None = None) -> None:
         args.logger.info('Maximizing {0} images: expanding them to fit their surrounding empty space.'.format(len(layout.items)))
         layout = image_cloud.maximize_empty_space(layout)
 
-    reconstructed_reservation_map = layout.reconstruct_reservation_map()
+    reconstructed_reservation_map = layout.reconstruct_reservation_map(args.logger)
     if not(np.array_equal(layout.canvas.reservation_map, reconstructed_reservation_map)):
         args.logger.info('Warning reservations map from generation not same as reconstructed from images.')
     

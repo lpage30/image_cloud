@@ -3,20 +3,11 @@ from PIL import Image
 from random import Random
 import warnings
 import numpy as np
-from imagecloud.position_box_size import ( ResizeType, Size )
-from imagecloud.imagecloud_helpers import (
-    parse_to_int,
-    parse_to_float,
-    parse_to_size,
-    TimeMeasure,
-)
-from imagecloud.weighted_image import (
-    WeightedImage,
-    sort_by_weight,
-    resize_images_to_proportionally_fit,
-    grow_size_by_step,
-)
-from imagecloud.reservations import Reservations, SampledUnreservedBoxResult
+from imagecloud.size import (Size, ResizeType)
+from imagecloud.parsers import (parse_to_float, parse_to_int)
+from imagecloud.reservations import (Reservations, SampledUnreservedOpening)
+from imagecloud.image_wrappers import (WeightedImage, sort_by_weight, resize_images_to_proportionally_fit)
+from imagecloud.time_measure import TimeMeasure
 import imagecloud.imagecloud_defaults as helper
 from imagecloud.layout import (
     LayoutContour,
@@ -96,14 +87,14 @@ class ImageCloud(object):
                  margin: int | None = None,
                  mode: str | None = None,
                  name: str | None = None,
-                 parallelism: int | None = None
+                 total_threads: int | None = None
     ) -> None:
         self._mask: np.ndarray | None = np.array(mask) if mask is not None else None
-        self._size = size if size is not None else parse_to_size(helper.DEFAULT_CLOUD_SIZE)
+        self._size = size if size is not None else Size.parse(helper.DEFAULT_CLOUD_SIZE)
         self._background_color = background_color if background_color is not None else helper.DEFAULT_BACKGROUND_COLOR
         self._max_images = max_images if max_images is not None else parse_to_int(helper.DEFAULT_MAX_IMAGES)
         self._max_image_size = max_image_size
-        self._min_image_size = min_image_size if min_image_size is not None else parse_to_size(helper.DEFAULT_MIN_IMAGE_SIZE)
+        self._min_image_size = min_image_size if min_image_size is not None else Size.parse(helper.DEFAULT_MIN_IMAGE_SIZE)
         self._image_step = image_step if image_step is not None else parse_to_int(helper.DEFAULT_STEP_SIZE)
         self._resize_type = resize_type if resize_type is not None else helper.DEFAULT_RESIZE_TYPE
         self._scale = scale if scale is not None else parse_to_float(helper.DEFAULT_SCALE)
@@ -116,7 +107,7 @@ class ImageCloud(object):
         self._mode = mode if mode is not None else helper.DEFAULT_MODE
         self._random_state = None
         self._name = name if name is not None else 'imagecloud'
-        self._parallelism = parallelism if parallelism is not None else parse_to_int(helper.DEFAULT_PARALLELISM)
+        self._total_threads = total_threads if total_threads is not None else parse_to_int(helper.DEFAULT_TOTAL_THREADS)
         self.layout_: Layout | None = None
 
     @property
@@ -165,18 +156,17 @@ class ImageCloud(object):
             imagecloud_size,
             self.resize_type,
             self.image_step,
-            self._margin,
-            self._logger
+            self._margin
         )
         measure = TimeMeasure()
         measure.start()
         while True:
             self._logger.push_indent('creating-imagecloud')
             if self.mask is not None:
-                imagecloud_size = Size((
+                imagecloud_size = Size(
                     self.mask.shape[0],
                     self.mask.shape[1]
-                ))
+                )
             
             result = self._generate(
                 proportional_images,
@@ -193,14 +183,13 @@ class ImageCloud(object):
                     if self.mask is not None:
                         raise ValueError('Cannot expand_cloud_to_fit_all when mask is provided.')  
 
-                new_imagecloud_size = grow_size_by_step(
-                    imagecloud_size, 
+                new_imagecloud_size = imagecloud_size.adjust(
                     cloud_expansion_step_size, 
                     self.resize_type
                 )
                 self._logger.info('Expanded ImageCloud ({0} -> {1}) for dropped images ({2}/{3})'.format(
-                    str(imagecloud_size),
-                    str(new_imagecloud_size),
+                    imagecloud_size.size_to_string(),
+                    new_imagecloud_size.size_to_string(),
                     (len(weighted_images) - len(result.items)),
                     len(weighted_images)
                 ))
@@ -227,32 +216,28 @@ class ImageCloud(object):
             self._check_generated()
             layout = self.layout_
         self.layout_ = layout
-        reservations = Reservations()
-        reservations.reservation_map = layout.canvas.reservation_map
+        reservations = Reservations.create_reservations(layout.canvas.reservation_map)
         new_items: list[LayoutItem] = list()
+        
         total_images = len(layout.items)
         self._logger.info('Maximizing ImageCloud empty-space around  {0} images'.format(total_images))
         self._logger.push_indent('maximizing-empty-space')
         measure = TimeMeasure()
         measure.start()
         maximized_count = 0
+
         for i in range(total_images - 1, -1, -1):
             item: LayoutItem = layout.items[i]
             image_measure = TimeMeasure()
             image_measure.start()
             self._logger.push_indent('image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
-            expanded_versions = reservations.find_expanded_box_versions(item.reservation_box)
+            new_reservation_box = reservations.maximize_existing_reservation(item.reservation_box)
             image_measure.stop()
-            if expanded_versions is None:
+            if item.reservation_box.equals(new_reservation_box):
                 new_items.append(item)
-                self._logger.pop_indent()
                 continue
-            # maximum expanded box is the possible_box with largest area
-            expanded_versions.sort(key=lambda v: v.area, reverse=True)
-
-            new_reservation_box = expanded_versions[0]
             margin = 2 * (item.reservation_box.left - item.placement_box.left)
-            reservations.reserve_box(new_reservation_box, item.reservation_no)
+            reservations.reserve_opening(item.original_image.name, item.reservation_no, new_reservation_box)
             new_items.append(
                 LayoutItem(
                     item.original_image,
@@ -265,8 +250,8 @@ class ImageCloud(object):
             )
             maximized_count += 1
             self._logger.info('resized {0} -> {1}. ({2})'.format(
-                str(item.reservation_box),
-                str(new_reservation_box),
+                item.reservation_box.box_to_string(),
+                new_reservation_box.box_to_string(),
                 image_measure.latency_str(),
             ))
             self._logger.pop_indent()
@@ -301,7 +286,7 @@ class ImageCloud(object):
             layout.scale,
             layout.margin,
             layout.name + '.maximized',
-            self._parallelism,
+            self._total_threads,
             measure.latency_str()
         )
         self._logger.reset_context()
@@ -319,7 +304,7 @@ class ImageCloud(object):
             raise ValueError("We need at least 1 image to plot a imagecloud, "
                              "got %d." % len(proportional_images))
         
-        reservations = Reservations(imagecloud_size, self._parallelism)
+        reservations = Reservations(self._logger, imagecloud_size, self._total_threads)
 
         layout_items: list[LayoutItem] = list()
 
@@ -349,10 +334,10 @@ class ImageCloud(object):
                     " is too small or too much of the image is masked "
                     "out.")
             if 1 < len(sizes):
-                max_image_size = Size((
+                max_image_size = Size(
                     int(2 * sizes[0].width * sizes[1].width / (sizes[0].width + sizes[1].width)),
                     int(2 * sizes[0].height * sizes[1].height / (sizes[0].height + sizes[1].height))
-                ))
+                )
             else:
                 max_image_size = sizes[0]
 
@@ -377,39 +362,38 @@ class ImageCloud(object):
 
             self._logger.info('Finding position in ImageCloud')
             
-            sampled_result: SampledUnreservedBoxResult = reservations.sample_to_find_unreserved_box(
-                Size(image.size),
+            sampled_result: SampledUnreservedOpening = reservations.sample_to_find_unreserved_opening(
+                Size(image.width, image.height),
                 self._min_image_size,
                 self._margin,
                 self._resize_type,
-                self._image_step,
-                random_state
+                self._image_step
             )
             measure.stop()
             if sampled_result.found:
                 self._logger.info('Found position: samplings({0}), orientation ({1}), resize({2}->{3}) ({4})'.format(
                     sampled_result.sampling_total,
                     sampled_result.orientation.name if sampled_result.orientation is not None else None,
-                    str(Size(image.size)),
-                    str(sampled_result.new_size),
+                    Size(image.width, image.height).size_to_string(),
+                    sampled_result.new_size.size_to_string(),
                     measure.latency_str()
                 ))
                 reservation_no = index + 1
-                reservations.reserve_box(sampled_result.unreserved_box, reservation_no)
+                reservations.reserve_opening(name, reservation_no, sampled_result.opening_box)
                 layout_items.append(LayoutItem(
                     proportional_images[index],
                     sampled_result.actual_box,
                     sampled_result.orientation,
-                    sampled_result.unreserved_box,
+                    sampled_result.opening_box,
                     reservation_no,
                     measure.latency_str()
                 ))
             else:
                 self._logger.info('Dropping image: samplings({0}). {1} resize({2} -> {3}) ({4})'.format(
                     sampled_result.sampling_total,
-                    'Image resized too small' if sampled_result.new_size < self._min_image_size else '',
-                    str(Size(image.size)),
-                    str(sampled_result.new_size),
+                    'Image resized too small' if sampled_result.new_size.is_less_than(self._min_image_size) else '',
+                    Size(image.width, image.height).size_to_string(),
+                    sampled_result.new_size.size_to_string(),
                     measure.latency_str()
                 ))
                 
@@ -438,7 +422,7 @@ class ImageCloud(object):
             self._scale,
             self._margin,
             self._name + '.layout',
-            self._parallelism,
+            self._total_threads,
             generation_measure.latency_str()
         )
         return self.layout_
@@ -460,7 +444,7 @@ class ImageCloud(object):
             # if all channels are white, mask out
             boolean_mask = np.all(mask[:, :, :3] == 255, axis=-1)
         else:
-            raise ValueError("Got mask of invalid shape: %s" % str(mask.shape))
+            raise ValueError("Got mask of invalid shape: %s" % f'mask({mask.shape[0]},{mask.shape[1]},{mask.shape[2]})')
         return boolean_mask
 
     @staticmethod

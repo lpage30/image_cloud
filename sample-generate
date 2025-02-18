@@ -19,4 +19,5 @@ generate_imagecloud \
     -min_image_size $reasonable_smallest_size \
     -resize_type MAINTAIN_ASPECT_RATIO \
     -show_imagecloud \
-    -log_filepath $generate_log
+    -log_filepath $generate_log \
+    -total_threads 64

@@ -1,4 +1,4 @@
-from imagecloud.position_box_size import ResizeType
+from imagecloud.size import ResizeType
 DEFAULT_IMAGE_FORMAT = 'png'
 DEFAULT_CLOUD_SIZE = '400,200'
 DEFAULT_RESIZE_TYPE = 'MAINTAIN_ASPECT_RATIO'
@@ -91,6 +91,6 @@ MODE_TYPES = [
     'I;16N'
 ]
 MODE_HELP = 'Transparent background will be generated when mode is "RGBA" and background_color is None.'
-DEFAULT_PARALLELISM = '1'
-PARALLELISM_HELP = '''Experimental, using parallel algorithms to accomplish image-cloud generation.  Value is the number of threads-of-execution to commit to generation.  A value of 1 will execute sequentially (not experimental); uses no parallel algorithms.
+DEFAULT_TOTAL_THREADS = '1'
+TOTAL_THREADS_HELP = '''Experimental, using parallel algorithms with thread-allocations to accomplish image-cloud generation.  Value is the number of threads-of-execution to commit to generation.  A value of 1 will execute sequentially (not experimental); uses no parallel algorithms.
 '''

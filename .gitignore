@@ -7,6 +7,7 @@
 *.pyc
 
 # Distribution / packaging
+cython_debug/
 build/
 dist/
 *.egg-info/
@@ -14,6 +15,7 @@ dist/
 ### ides ###
 .vscode/*
 !.vscode/launch.json
+!setup.cfg
 .idea
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)

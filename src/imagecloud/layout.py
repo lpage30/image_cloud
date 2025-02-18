@@ -1,21 +1,14 @@
 from imagecloud.base_logger import BaseLogger
-from imagecloud.weighted_image import NamedImage
-from imagecloud.position_box_size import ( 
-    ResizeType,
-    RESIZE_TYPES,
-    Size,
-    Position,
-    BoxCoordinates
-)
-import imagecloud.imagecloud_defaults as helper
-from imagecloud.imagecloud_helpers import (
-    to_unused_filepath
-)
+from imagecloud.image_wrappers import NamedImage
+from imagecloud.size import (Size, ResizeType, RESIZE_TYPES)
+from imagecloud.box import Box
 from imagecloud.reservations import (
     Reservations,
     ReservationMapType, 
     ReservationMapDataType
 )
+import imagecloud.imagecloud_defaults as helper
+from imagecloud.parsers import to_unused_filepath
 import numpy as np
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -97,7 +90,7 @@ class LayoutCanvas:
     def to_image(self, scale: float = 1.0) -> NamedImage:
         image = Image.new(
             self.mode, 
-            self.size.scale(scale).tuple,
+            self.size.scale(scale).image_tuple,
             self.background_color
         )
         return NamedImage(image, self.name)
@@ -142,7 +135,7 @@ class LayoutCanvas:
             return None
         
         return LayoutCanvas(
-            Size((int(row[LAYOUT_CANVAS_SIZE_WIDTH]), int(row[LAYOUT_CANVAS_SIZE_HEIGHT]))),
+            Size(int(row[LAYOUT_CANVAS_SIZE_WIDTH]), int(row[LAYOUT_CANVAS_SIZE_HEIGHT])),
             row[LAYOUT_CANVAS_MODE],
             row[LAYOUT_CANVAS_BACKGROUND_COLOR] if not(is_empty(row[LAYOUT_CANVAS_BACKGROUND_COLOR])) else None,
             np.loadtxt(
@@ -241,9 +234,9 @@ class LayoutItem:
     def __init__(
         self,
         image: NamedImage,
-        placement_box: BoxCoordinates,
+        placement_box: Box,
         orientation: Image.Transpose | None,
-        reservation_box: BoxCoordinates,        
+        reservation_box: Box,        
         reservation_no: int,
         latency_str: str = ''
     ) -> None:
@@ -265,7 +258,7 @@ class LayoutItem:
         return self._original_image
     
     @property
-    def placement_box(self) -> BoxCoordinates:
+    def placement_box(self) -> Box:
         return self._placement_box
         
     @property
@@ -273,7 +266,7 @@ class LayoutItem:
         return self._orientation
 
     @property    
-    def reservation_box(self) -> BoxCoordinates:
+    def reservation_box(self) -> Box:
         return self._reservation_box
 
     @property
@@ -300,14 +293,13 @@ class LayoutItem:
             new_image = new_image.transpose(self.orientation)
         
         new_size = self.placement_box.size.scale(scale)
-        if new_image.size != new_size.tuple:
+        if new_image.size != new_size.image_tuple:
             logger.info('Resizing {0} ({1},{2}) -> {3}'.format(
                 self.original_image.name,
                 new_image.size[0], new_image.size[1],
-                str(new_size)
+                new_size.size_to_string()
             ))
-            new_image = new_image.resize(new_size.tuple)
-
+            new_image = new_image.resize(new_size.image_tuple)
         return NamedImage(new_image, self.original_image.name)
 
     def to_legend_handle(self) -> mpatches.Patch:
@@ -322,15 +314,15 @@ class LayoutItem:
         
         return {
             LAYOUT_ITEM_IMAGE_FILEPATH: image_filepath,
-            LAYOUT_ITEM_POSITION_X: self.placement_box.position.left,
-            LAYOUT_ITEM_POSITION_Y: self.placement_box.position.upper,
-            LAYOUT_ITEM_SIZE_WIDTH: self.placement_box.size.width,
-            LAYOUT_ITEM_SIZE_HEIGHT: self.placement_box.size.height,
+            LAYOUT_ITEM_POSITION_X: self.placement_box.left,
+            LAYOUT_ITEM_POSITION_Y: self.placement_box.upper,
+            LAYOUT_ITEM_SIZE_WIDTH: self.placement_box.width,
+            LAYOUT_ITEM_SIZE_HEIGHT: self.placement_box.height,
             LAYOUT_ITEM_ORIENTATION: self.orientation.name if self.orientation is not None else '',
-            LAYOUT_ITEM_RESERVATION_POSITION_X: self.reservation_box.position.left,
-            LAYOUT_ITEM_RESERVATION_POSITION_Y: self.reservation_box.position.upper,
-            LAYOUT_ITEM_RESERVATION_SIZE_WIDTH: self.reservation_box.size.width,
-            LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT: self.reservation_box.size.height,
+            LAYOUT_ITEM_RESERVATION_POSITION_X: self.reservation_box.left,
+            LAYOUT_ITEM_RESERVATION_POSITION_Y: self.reservation_box.upper,
+            LAYOUT_ITEM_RESERVATION_SIZE_WIDTH: self.reservation_box.width,
+            LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT: self.reservation_box.height,
             LAYOUT_ITEM_RESERVATION_NO: self.reservation_no,
             LAYOUT_ITEM_LATENCY: self._latency_str
         }
@@ -344,9 +336,11 @@ class LayoutItem:
         if all([is_empty(row[header])  for header in LAYOUT_ITEM_HEADERS]): 
             return None
 
-        placement_box = BoxCoordinates(
-            Position((int(row[LAYOUT_ITEM_POSITION_X]), int(row[LAYOUT_ITEM_POSITION_Y]))),
-            Size((int(row[LAYOUT_ITEM_SIZE_WIDTH]), int(row[LAYOUT_ITEM_SIZE_HEIGHT])))
+        placement_box = Box(
+            int(row[LAYOUT_ITEM_POSITION_X]),
+            int(row[LAYOUT_ITEM_POSITION_Y]),
+            int(row[LAYOUT_ITEM_POSITION_X]) + int(row[LAYOUT_ITEM_SIZE_WIDTH]), 
+            int(row[LAYOUT_ITEM_POSITION_Y]) + int(row[LAYOUT_ITEM_SIZE_HEIGHT])
         )
         reservation_box = placement_box
         reservation_headers = [
@@ -357,9 +351,11 @@ class LayoutItem:
         ]
 
         if all([header in row and not(is_empty(row[header])) for header in reservation_headers]):
-            reservation_box = BoxCoordinates(
-                Position((int(row[LAYOUT_ITEM_RESERVATION_POSITION_X]), int(row[LAYOUT_ITEM_RESERVATION_POSITION_Y]))),
-                Size((int(row[LAYOUT_ITEM_RESERVATION_SIZE_WIDTH]), int(row[LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT])))
+            reservation_box = Box(
+                int(row[LAYOUT_ITEM_RESERVATION_POSITION_X]),
+                int(row[LAYOUT_ITEM_RESERVATION_POSITION_Y]),
+                int(row[LAYOUT_ITEM_RESERVATION_POSITION_X]) + int(row[LAYOUT_ITEM_RESERVATION_SIZE_WIDTH]), 
+                int(row[LAYOUT_ITEM_RESERVATION_POSITION_Y]) + int(row[LAYOUT_ITEM_RESERVATION_SIZE_HEIGHT])
             )
         
         return LayoutItem(
@@ -384,7 +380,7 @@ class Layout:
         scale: float | None = None,
         margin: int | None = None,
         name: str | None = None,
-        parallelism: int | None = None,
+        total_threads: int | None = None,
         latency_str: str = ''
     ) -> None:
         self._name = name if name else 'imagecloud.layout'
@@ -401,7 +397,7 @@ class Layout:
         self.scale = scale if scale is not None else int(helper.DEFAULT_SCALE)
 
         self.margin = margin if margin is not None else int(helper.DEFAULT_MARGIN)
-        self.parallelism = parallelism if parallelism is not None else int(helper.DEFAULT_PARALLELISM)
+        self.total_threads = total_threads if total_threads is not None else int(helper.DEFAULT_PARALLELISM)
         self._latency_str = latency_str
     
     @property
@@ -424,8 +420,9 @@ class Layout:
     def items(self) -> list[LayoutItem]:
         return self._items
     
-    def reconstruct_reservation_map(self) -> ReservationMapType:
+    def reconstruct_reservation_map(self,logger: BaseLogger ) -> ReservationMapType:
         return Reservations.create_reservation_map(
+            logger,
             self.canvas.size,
             [item.reservation_box for item in self.items]
         )
@@ -444,12 +441,12 @@ class Layout:
         for i in range(total):
             item: LayoutItem = self.items[i]
             logger.info('pasting Image[{0}/{1}] {2} into imagecloud canvas'.format(i + 1, total, item.original_image.name))            
-            image = item.to_image( logger, scale)
+            image = item.to_image(logger, scale)
             box = item.placement_box.scale(scale)
             try:
                 canvas.image.paste(
                     im=image.image,
-                    box=box.tuple
+                    box=box.image_tuple
                 )
             except Exception as e:
                 logger.error('Error pasting {0} into {1}. {2} \n{3}'.format(image.name, canvas.name, str(e), '\n'.join(traceback.format_exception(e))))
@@ -493,7 +490,7 @@ class Layout:
             LAYOUT_SCALE: self.scale,
             LAYOUT_MARGIN: self.margin,
             LAYOUT_NAME: self.name,
-            LAYOUT_PARALLELISM: self.parallelism,
+            LAYOUT_TOTAL_THREADS: self.total_threads,
             LAYOUT_LATENCY: self._latency_str
         }
         with open(csv_filepath, 'w') as file:
@@ -538,13 +535,13 @@ class Layout:
                 return None
             
             max_images = int(layout_data[LAYOUT_MAX_IMAGES]) if LAYOUT_MAX_IMAGES in layout_data else None
-            min_image_size = Size((int(layout_data[LAYOUT_MIN_IMAGE_SIZE_WIDTH]), int(layout_data[LAYOUT_MIN_IMAGE_SIZE_HEIGHT]))) if LAYOUT_MIN_IMAGE_SIZE_WIDTH in layout_data and LAYOUT_MIN_IMAGE_SIZE_HEIGHT in layout_data else None
+            min_image_size = Size(int(layout_data[LAYOUT_MIN_IMAGE_SIZE_WIDTH]), int(layout_data[LAYOUT_MIN_IMAGE_SIZE_HEIGHT])) if LAYOUT_MIN_IMAGE_SIZE_WIDTH in layout_data and LAYOUT_MIN_IMAGE_SIZE_HEIGHT in layout_data else None
             image_step = int(layout_data[LAYOUT_IMAGE_STEP]) if LAYOUT_IMAGE_STEP in layout_data else None
             resize_type = ResizeType[layout_data[LAYOUT_RESIZE_TYPE]] if LAYOUT_RESIZE_TYPE in layout_data else None
             scale = float(layout_data[LAYOUT_SCALE]) if LAYOUT_SCALE in layout_data else None
             margin = int(layout_data[LAYOUT_MARGIN]) if LAYOUT_MARGIN in layout_data else None
             name = layout_data[LAYOUT_NAME] if LAYOUT_NAME in layout_data else None  
-            parallelism = int(layout_data[LAYOUT_PARALLELISM]) if LAYOUT_PARALLELISM in layout_data else None
+            total_threads = int(layout_data[LAYOUT_TOTAL_THREADS]) if LAYOUT_TOTAL_THREADS in layout_data else None
             latency_str = layout_data[LAYOUT_LATENCY] if LAYOUT_LATENCY in layout_data else ''
             return Layout(
                 canvas,
@@ -557,7 +554,7 @@ class Layout:
                 scale,
                 margin,
                 name,
-                parallelism,
+                total_threads,
                 latency_str
             )
         except Exception as e:
@@ -579,8 +576,8 @@ LAYOUT_MARGIN = 'layout_margin'
 LAYOUT_MARGIN_HELP = '<image-margin>'
 LAYOUT_NAME = 'layout_name'
 LAYOUT_NAME_HELP = '<name>'
-LAYOUT_PARALLELISM = 'layout_parallelism'
-LAYOUT_PARALLELISM_HELP = '<integer>'
+LAYOUT_TOTAL_THREADS = 'layout_total_threads'
+LAYOUT_TOTAL_THREADS_HELP = '<integer>'
 LAYOUT_LATENCY = 'layout_latency'
 LAYOUT_LATENCY_HELP = '<string>'
 LAYOUT_HEADERS = [
@@ -592,7 +589,7 @@ LAYOUT_HEADERS = [
     LAYOUT_SCALE,
     LAYOUT_MARGIN,
     LAYOUT_NAME,
-    LAYOUT_PARALLELISM,
+    LAYOUT_TOTAL_THREADS,
     LAYOUT_LATENCY
 ]
 LAYOUT_HEADERS_HELP = [
@@ -604,7 +601,7 @@ LAYOUT_HEADERS_HELP = [
     LAYOUT_SCALE_HELP,
     LAYOUT_MARGIN_HELP,
     LAYOUT_NAME_HELP,
-    LAYOUT_PARALLELISM_HELP,
+    LAYOUT_TOTAL_THREADS_HELP,
     LAYOUT_LATENCY_HELP
 ]
 LAYOUT_CANVAS_SIZE_WIDTH = 'layout_canvas_size_width'

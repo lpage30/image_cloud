@@ -1,12 +1,10 @@
 import argparse
 import os.path
-from imagecloud.position_box_size import (ResizeType, RESIZE_TYPES, Size)
-from imagecloud.imagecloud_helpers import (
+from imagecloud.size import (Size, ResizeType, parse_to_resize_type)
+from imagecloud.parsers import (
     parse_to_existing_path,
     parse_to_int,
     parse_to_float,
-    parse_to_size,
-    parse_to_resize_type,
     to_unused_filepath,
 )
 
@@ -47,7 +45,7 @@ def is_float(parser: argparse.ArgumentParser, value: str) -> float:
 
 def is_size(parser: argparse.ArgumentParser, value: str) -> Size:
     try:
-        return parse_to_size(value)
+        return Size.parse(value)
     except Exception as e:
         parser.error(str(e))
 
