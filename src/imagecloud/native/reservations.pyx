@@ -148,7 +148,8 @@ cdef Box _p_find_unreserved_opening(
     global MARK
     global EMPY
     cdef atomic[int] pos_count
-    cdef int total_positions = size_area(self.map_size)
+    cdef Size sub_map_size = create_size(self.map_size.width - size.width, self.map_size.height - size.height)
+    cdef int total_positions = size_area(sub_map_size)
     cdef int p
     cdef Box possible_opening
     cdef int row
@@ -262,103 +263,75 @@ cdef SampledUnreservedOpening sample_to_find_unreserved_opening(
             rotate = 1
     return result
 
-cdef Box maximize_existing_reservation(
+cdef Box _find_expanded_box(
     Reservations self,
     unsigned int[:,:] self_reservation_map,
-    Box existing_reservation
-):
-    global g_directions
-    cdef Box result = create_box(box.left, box.upper, box.right, box.lower)
-    cdef int i = 0
-    cdef Box expanded_box
-    cdef list maximized_boxes = [existing_reservation]
-    cdef list sampled_boxes = []
-    cdef int sampled_box_count = 0
-    # search for maximized boxes by iteratively expanding until cannot expand anymore
-    while True:
-        sampled_boxes = []
-        sampled_box_count = 0
-        for box in maximized_boxes:
-            for i in range(4):
-                expanded_box = _find_expanded_box(
-                    self, 
-                    self_reservation_map,
-                    box,
-                    g_directions[i]
-                )
-                if 0 == is_empty(expanded_box):
-                    sampled_boxes.append(expanded_box)
-                    sampled_box_count = sampled_box_count + 1
-        if 0 == sampled_box_count:
-            break
-        maximized_boxes.extend(sampled_boxes)
-        maximized_boxes.sort(key=lambda b: box_area(box), reverse=True)
-
-    return maximized_boxes[0]
-
-cdef Box _find_expanded_box(
-    Reservations self, 
-    unsigned int[:,:] self_reservation_map,
     Box box,
-    Direction direction
+    int direction: int
 ) noexcept nogil:
     cdef Box edge = create_box(box.left, box.upper, box.right, box.lower)
     cdef Box result = create_box(box.left, box.upper, box.right, box.lower)
 
-    if Direction.LEFT == direction:
-        edge.right = box.left
-        for col in range(box.left - 1, -1, -1):
+    if 0 == direction: # left
+        edge = create_box(box.left, box.upper, box.left, box.lower)
+        for col in range(edge.left - 1, -1, -1):
             edge.left = col
             if 0 == contains(self.map_box, edge):
-                log_error(
-                    "Expanding-Direction[%d]reservation_map(%d,%d,%d,%d) cannot contain edge(%d,%d,%d,%d)",
-                    direction, self.map_box.left, self.map_box.upper, self.map_box.right, self.map_box.lower,
-                    edge.left, edge.upper, edge.right, edge.lower
-                )
+                break
             elif 0 != _is_unreserved(self, self_reservation_map, edge):
                 result.left = edge.left
-                return result
-    elif Direction.UP == direction:
-        edge.lower = box.upper
-        for row in range(box.upper - 1, -1, -1):
+                break
+    elif 1 == direction: # UP
+        edge = create_box(box.left, box.upper, box.right, box.upper)
+        for row in range(edge.upper - 1, -1, -1):
             edge.upper = row
             if 0 == contains(self.map_box, edge):
-                log_error(
-                    "Expanding-Direction[%d]reservation_map(%d,%d,%d,%d) cannot contain edge(%d,%d,%d,%d)",
-                    direction, self.map_box.left, self.map_box.upper, self.map_box.right, self.map_box.lower,
-                    edge.left, edge.upper, edge.right, edge.lower
-                )
+                break
             elif 0 != _is_unreserved(self, self_reservation_map, edge):
                 result.upper = edge.upper
-                return result
-    elif Direction.RIGHT == direction:
-        edge.left = box.right
-        for col in range(box.right + 1, self.map_size.width):
+                break
+    elif 2 == direction: # right
+        edge = create_box(box.right, box.upper, box.right, box.lower)
+        for col in range(edge.right + 1, self.map_size.width):
             edge.right = col
             if 0 == contains(self.map_box, edge):
-                log_error(
-                    "Expanding-Direction[%d]reservation_map(%d,%d,%d,%d) cannot contain edge(%d,%d,%d,%d)",
-                    direction, self.map_box.left, self.map_box.upper, self.map_box.right, self.map_box.lower,
-                    edge.left, edge.upper, edge.right, edge.lower
-                )
+                break
             elif 0 != _is_unreserved(self, self_reservation_map, edge):
                 result.right = edge.right
-                return result
-    else: # Direction.DOWN
-        edge.upper = box.lower
-        for row in range(box.lower + 1, self.map_size.height):
+                break
+    else: # Down
+        edge = create_box(box.left, box.lower, box.right, box.lower)
+        for row in range(edge.lower + 1, self.map_size.height):
             edge.lower = row
             if 0 == contains(self.map_box, edge):
-                log_error(
-                    "Expanding-Direction[%d]reservation_map(%d,%d,%d,%d) cannot contain edge(%d,%d,%d,%d)",
-                    direction, self.map_box.left, self.map_box.upper, self.map_box.right, self.map_box.lower,
-                    edge.left, edge.upper, edge.right, edge.lower
-                )
+                break
             elif 0 != _is_unreserved(self, self_reservation_map, edge):
                 result.lower = edge.lower
-                return result
+                break
+    return result
 
-    return empty_box()
+cdef Box maximize_existing_reservation(
+    Reservations self, 
+    unsigned int[:,:] self_reservation_map,
+    Box existing_reservation
+):
+    cdef Box result = create_box(existing_reservation.left, existing_reservation.upper, existing_reservation.right, existing_reservation.lower)
+    cdef int expansion_count = 0
+    cdef int sampling = 0
+    cdef int i = 0
+    cdef Box expanded_box = Box(existing_reservation.left, existing_reservation.upper, existing_reservation.right, existing_reservation.lower)
+    while True:
+        sampling = sampling + 1
+        expansion_count = 0
+        for i in range(4):
+            expanded_box = _find_expanded_box(self, self_reservation_map, expanded_box, i)
+            if 0 == box_equals(expanded_box, result):
+                result = expanded_box
+                expansion_count = expansion_count + 1
+        if 0 == expansion_count:
+            break
+    return result
+
 
 def native_create_reservations(
     int num_threads,
@@ -402,9 +375,10 @@ def native_sample_to_find_unreserved_opening(
 def native_maximize_existing_reservation(
     native_reservations,
     unsigned int[:,:] reservation_map,
-    native_existing_reservation_box
+    native_existing_reservation
 ): # return native_box
-    return maximize_existing_reservation(native_reservations, reservation_map, native_existing_reservation_box)
+    return maximize_existing_reservation(native_reservations, reservation_map, native_existing_reservation)
+
 
 def native_count_lost_reserved_slots(
     native_reservations,

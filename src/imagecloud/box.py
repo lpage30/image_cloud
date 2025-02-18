@@ -52,6 +52,14 @@ class Box:
     def box_to_string(self) -> str:
         return f'Box({self.left}, {self.upper}, {self.right}, {self.lower})'
     
+    def remove_margin(self, margin: int):
+        padding = int(round(margin/2))
+        return Box(
+            self.left + padding,
+            self.upper + padding,
+            self.right - padding,
+            self.lower - padding
+        )
     def to_native(self):
         return native_create_box(
             self.left,

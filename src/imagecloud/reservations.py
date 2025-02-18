@@ -7,8 +7,7 @@ from imagecloud.box import Box
 from imagecloud.native.reservations import (
     native_create_reservations,
     native_sample_to_find_unreserved_opening,
-    native_maximize_existing_reservation,
-    native_count_lost_reserved_slots
+    native_maximize_existing_reservation
 )
 from imagecloud.base_logger import BaseLogger
 ReservationMapDataType = np.uint32
@@ -123,19 +122,19 @@ class Reservations(object):
             self._random
         )
         return SampledUnreservedOpening.from_native(native_SampledUnreservedOpening)
-
+    
     def maximize_existing_reservation(self, existing_reservation: Box) -> Box:
-        native_Box = native_maximize_existing_reservation(
+        native_box = native_maximize_existing_reservation(
             self._native_reservations,
             self._reservation_map,
             existing_reservation.to_native()
         )
-        return Box.from_native(native_Box)
-        
+        return Box.from_native(native_box)
+    
     @staticmethod
-    def create_reservations(reservation_map: ReservationMapType):
-        result = Reservations()
-        result._map_size = Size(reservation_map.shape[0], reservation_map.shape[1])
+    def create_reservations(reservation_map: ReservationMapType, logger: BaseLogger):
+        result = Reservations(logger)
+        result._map_size = Size(reservation_map.shape[1], reservation_map.shape[0])
         result._map_box = Box(0, 0, result._map_size.width, result._map_size.height)
         result._buffer_length = result._map_size.area
         result._reservation_map = reservation_map

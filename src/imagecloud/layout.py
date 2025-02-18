@@ -98,13 +98,13 @@ class LayoutCanvas:
     def to_reservation_image(self) -> NamedImage:
         image = Image.new(
             'P',
-            (self.reservation_map.shape[0], self.reservation_map.shape[1])
+            (self.reservation_map.shape[1], self.reservation_map.shape[0])
         )
         image.putpalette(to_ImagePalette(self.reservation_colors))
         pixels = image.load()
-        for x in range(self.reservation_map.shape[0]):
-            for y in range(self.reservation_map.shape[1]):
-                pixels[x, y] = int(self.reservation_map[x,y])
+        for y in range(self.reservation_map.shape[0]):
+            for x in range(self.reservation_map.shape[1]):
+                pixels[x, y] = int(self.reservation_map[y,x])
         
         return NamedImage(image, '{0}.reservation_map'.format(self.name))
     

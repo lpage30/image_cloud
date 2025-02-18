@@ -41,9 +41,3 @@ cdef SampledUnreservedOpening sample_to_find_unreserved_opening(
     int step_size,
     random_object
 )  noexcept nogil
-
-cdef Box maximize_existing_reservation(
-    Reservations self,
-    unsigned int[:,:] self_reservation_map,
-    Box existing_reservation
-)

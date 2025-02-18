@@ -216,7 +216,7 @@ class ImageCloud(object):
             self._check_generated()
             layout = self.layout_
         self.layout_ = layout
-        reservations = Reservations.create_reservations(layout.canvas.reservation_map)
+        reservations = Reservations.create_reservations(layout.canvas.reservation_map, self._logger)
         new_items: list[LayoutItem] = list()
         
         total_images = len(layout.items)
@@ -231,11 +231,19 @@ class ImageCloud(object):
             image_measure = TimeMeasure()
             image_measure.start()
             self._logger.push_indent('image-{0}[{1}/{2}]'.format(item.name, total_images - i, total_images))
+            self._logger.info('Maximizing...')
             new_reservation_box = reservations.maximize_existing_reservation(item.reservation_box)
             image_measure.stop()
             if item.reservation_box.equals(new_reservation_box):
+                self._logger.info('Already Maximized ({0})'.format(image_measure.latency_str()))
                 new_items.append(item)
+                self._logger.pop_indent()
                 continue
+            self._logger.info('Maximized {0} -> {1} ({0})'.format(
+                item.reservation_box.size.size_to_string(),
+                new_reservation_box.size.size_to_string(),
+                image_measure.latency_str()
+            ))
             margin = 2 * (item.reservation_box.left - item.placement_box.left)
             reservations.reserve_opening(item.original_image.name, item.reservation_no, new_reservation_box)
             new_items.append(
