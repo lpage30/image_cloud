@@ -102,49 +102,6 @@ cdef Box _find_unreserved_opening(
     Size size,
     random_object
 ) noexcept nogil:
-    cdef Box possible_opening
-    cdef int row
-    cdef int col
-    cdef int pos_count = 0
-    cdef int rand_pos = 0
-    for row in range(self.map_size.height):
-        for col in range(self.map_size.width):
-            possible_opening = create_box(col, row, col + size.width, row + size.height)
-            if 0 == contains(self.map_box, possible_opening):
-                break
-            if 0 != _is_unreserved(
-                self,
-                self_reservation_map,
-                possible_opening
-            ):
-                self_position_buffer[pos_count] = col # x position
-                self_position_buffer[pos_count + 1] = row # y position
-                pos_count += 2
-
-    if 0 == pos_count:
-        return empty_box()
-
-    with gil:
-        rand_pos = random_object.randint(0, <int>((pos_count/2) - 1)) * 2
-
-    possible_opening.left = self_position_buffer[rand_pos]
-    possible_opening.upper = self_position_buffer[rand_pos + 1]
-
-    possible_opening.right = possible_opening.left + size.width
-    possible_opening.lower = possible_opening.upper + size.height
-    log_debug('found opening position[%d/%d] [x(%d) y(%d)] Size(%d,%d) right(%d), lower(%d) isunreserved?(%d)', 
-        rand_pos, pos_count, possible_opening.left, possible_opening.upper, size.width, size.height, possible_opening.right, possible_opening.lower,
-        _is_unreserved(self, self_reservation_map, possible_opening)
-    )
-    return possible_opening
-
-cdef Box _p_find_unreserved_opening(
-    Reservations self, 
-    unsigned int[:,:] self_reservation_map,
-    unsigned int[:] self_position_buffer,
-    Size size,
-    random_object
-) noexcept nogil:
     global MARK
     global EMPY
     cdef atomic[int] pos_count
@@ -213,22 +170,13 @@ cdef SampledUnreservedOpening sample_to_find_unreserved_opening(
 
     while True:
         sampling_count = sampling_count + 1
-        if 1 < self.num_threads:
-            unreserved_opening = _p_find_unreserved_opening(
-                self,
-                self_reservation_map,
-                self_position_buffer,
-                adjust(new_size, margin, ResizeType.NO_RESIZE_TYPE),
-                random_object
-            )
-        else:
-            unreserved_opening = _find_unreserved_opening(
-                self,
-                self_reservation_map,
-                self_position_buffer,
-                adjust(new_size, margin, ResizeType.NO_RESIZE_TYPE),
-                random_object
-            )
+        unreserved_opening = _find_unreserved_opening(
+            self,
+            self_reservation_map,
+            self_position_buffer,
+            adjust(new_size, margin, ResizeType.NO_RESIZE_TYPE),
+            random_object
+        )
 
         if 0 == is_empty(unreserved_opening):
             result.found = 1
